@@ -1,5 +1,6 @@
 package com.olo.app.api.request;
 
+import com.olo.app.domain.EventType;
 import com.olo.app.domain.NodeStatus;
 import com.olo.app.domain.NodeType;
 
@@ -7,9 +8,14 @@ import java.util.Map;
 
 /**
  * Request body for POST /api/runs/{runId}/events (executor callback).
+ * Idempotency key: (runId, sequenceNumber). sequenceNumber required; duplicate returns 409.
  */
 public class AppendEventRequest {
 
+    private Long sequenceNumber;
+    private Integer eventVersion;
+    private EventType eventType;
+    private String correlationId;
     private String nodeId;
     private String parentNodeId;
     private NodeType nodeType;
@@ -38,4 +44,16 @@ public class AppendEventRequest {
 
     public Map<String, Object> getMetadata() { return metadata; }
     public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }
+
+    public Long getSequenceNumber() { return sequenceNumber; }
+    public void setSequenceNumber(Long sequenceNumber) { this.sequenceNumber = sequenceNumber; }
+
+    public Integer getEventVersion() { return eventVersion; }
+    public void setEventVersion(Integer eventVersion) { this.eventVersion = eventVersion; }
+
+    public EventType getEventType() { return eventType; }
+    public void setEventType(EventType eventType) { this.eventType = eventType; }
+
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String correlationId) { this.correlationId = correlationId; }
 }

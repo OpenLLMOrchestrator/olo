@@ -14,13 +14,36 @@ public class ChatRunStore {
         public final String messageId;
         public volatile String status; // running | completed | failed | waiting_human
         public final long createdAt;
+        /** Tenant that owns this run; used for WebSocket SUBSCRIBE_RUN tenant check. */
+        public final String tenantId;
+        /** Cross-service tracing; set at run creation, propagated to every event. */
+        public final String correlationId;
+        /** Execution versioning for diff: which workflow/model/planner produced this run. */
+        public final String workflowVersion;
+        public final String modelVersion;
+        public final String plannerVersion;
 
         public RunRecord(String runId, String sessionId, String messageId) {
+            this(runId, sessionId, messageId, null, null, null, null, null);
+        }
+
+        public RunRecord(String runId, String sessionId, String messageId,
+                         String correlationId, String workflowVersion, String modelVersion, String plannerVersion) {
+            this(runId, sessionId, messageId, null, correlationId, workflowVersion, modelVersion, plannerVersion);
+        }
+
+        public RunRecord(String runId, String sessionId, String messageId, String tenantId,
+                         String correlationId, String workflowVersion, String modelVersion, String plannerVersion) {
             this.runId = runId;
             this.sessionId = sessionId;
             this.messageId = messageId;
+            this.tenantId = tenantId;
             this.status = "running";
             this.createdAt = System.currentTimeMillis();
+            this.correlationId = correlationId;
+            this.workflowVersion = workflowVersion;
+            this.modelVersion = modelVersion;
+            this.plannerVersion = plannerVersion;
         }
     }
 

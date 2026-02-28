@@ -21,11 +21,14 @@ public class OloChatActivitiesImpl implements OloChatActivities {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public void reportEvent(String runId, String callbackBaseUrl, String nodeId, String parentNodeId,
-                            String nodeType, String status,
+    public void reportEvent(String runId, String callbackBaseUrl, long sequenceNumber, String eventType, String correlationId,
+                            String nodeId, String parentNodeId, String nodeType, String status,
                             Map<String, Object> input, Map<String, Object> output, Map<String, Object> metadata) {
         String url = callbackBaseUrl.replaceAll("/$", "") + "/api/runs/" + runId + "/events";
         Map<String, Object> body = new HashMap<>();
+        body.put("sequenceNumber", sequenceNumber);
+        if (eventType != null) body.put("eventType", eventType);
+        if (correlationId != null) body.put("correlationId", correlationId);
         body.put("nodeId", nodeId);
         body.put("parentNodeId", parentNodeId);
         body.put("nodeType", nodeType);

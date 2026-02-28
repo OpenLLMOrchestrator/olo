@@ -26,6 +26,7 @@ public final class WorkflowInputSerializer {
     /**
      * Builds and returns the WorkflowInput object.
      * Pass this to the workflow so Temporal serializes it as a JSON object, not as a string.
+     * correlationId is set at run creation for cross-service tracing and propagated to every event.
      */
     public static WorkflowInput build(String tenantId,
                                      String sessionId,
@@ -34,7 +35,8 @@ public final class WorkflowInputSerializer {
                                      String pipeline,
                                      String transactionId,
                                      String runId,
-                                     String callbackBaseUrl) {
+                                     String callbackBaseUrl,
+                                     String correlationId) {
         String userMessageSafe = userMessage != null ? userMessage : "";
 
         InputItem userQueryInput = new InputItem(
@@ -52,7 +54,8 @@ public final class WorkflowInputSerializer {
                 Collections.emptyList(),
                 sessionId != null ? sessionId : "",
                 runId != null ? runId : "",
-                callbackBaseUrl != null ? callbackBaseUrl : ""
+                callbackBaseUrl != null ? callbackBaseUrl : "",
+                correlationId != null ? correlationId : ""
         );
 
         Routing routing = new Routing(

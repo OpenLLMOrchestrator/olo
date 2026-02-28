@@ -1,5 +1,6 @@
 package com.olo.app.service;
 
+import com.olo.app.domain.EventType;
 import com.olo.app.store.ChatRunStore;
 import com.olo.app.store.ExecutionEventStore;
 import com.olo.app.store.RunEventBroadcaster;
@@ -16,9 +17,11 @@ public interface RunService {
 
     void signalHumanInput(String runId, boolean approved, String message);
 
+    /** Idempotency key: (runId, sequenceNumber). eventType/correlationId optional; correlationId falls back to run's. */
     void appendEvent(String runId, String nodeId, String parentNodeId,
                     String nodeType, String status,
-                    Map<String, Object> input, Map<String, Object> output, Map<String, Object> metadata);
+                    Map<String, Object> input, Map<String, Object> output, Map<String, Object> metadata,
+                    Long sequenceNumber, Integer eventVersion, EventType eventType, String correlationId);
 
     RunEventBroadcaster getBroadcaster();
 

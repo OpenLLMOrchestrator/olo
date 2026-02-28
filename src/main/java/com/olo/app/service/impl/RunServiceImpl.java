@@ -1,5 +1,6 @@
 package com.olo.app.service.impl;
 
+import com.olo.app.domain.EventType;
 import com.olo.app.domain.NodeStatus;
 import com.olo.app.domain.NodeType;
 import com.olo.app.domain.OloExecutionEvent;
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -76,24 +78,54 @@ public class RunServiceImpl implements RunService {
     @Override
     public void appendEvent(String runId, String nodeId, String parentNodeId,
                             String nodeType, String status,
-                            Map<String, Object> input, Map<String, Object> output, Map<String, Object> metadata) {
+                            Map<String, Object> input, Map<String, Object> output, Map<String, Object> metadata,
+                            Long sequenceNumber, Integer eventVersion, EventType eventType, String correlationId) {
         OloExecutionEvent event = new OloExecutionEvent();
         event.setRunId(runId);
         event.setNodeId(nodeId);
         event.setParentNodeId(parentNodeId);
         event.setNodeType(NodeType.valueOf(nodeType));
         event.setStatus(NodeStatus.valueOf(status));
+        event.setEventType(eventType != null ? eventType : eventTypeFromStatus(NodeStatus.valueOf(status)));
         event.setTimestamp(System.currentTimeMillis());
+        if (sequenceNumber != null) event.setSequenceNumber(sequenceNumber);
+        if (eventVersion != null) event.setEventVersion(eventVersion);
+        String effectiveCorrelationId = correlationId != null ? correlationId : getCorrelationIdFromRun(runId);
+        event.setCorrelationId(effectiveCorrelationId);
         event.setInput(input);
         event.setOutput(output);
         event.setMetadata(metadata);
         eventStore.append(runId, event);
         broadcaster.broadcast(runId, event);
-        if ("COMPLETED".equals(status) && "SYSTEM".equals(nodeType)) {
-            runStore.setStatus(runId, "completed");
-        } else if ("WAITING".equals(status) && "HUMAN".equals(nodeType)) {
-            runStore.setStatus(runId, "waiting_human");
+        String derivedStatus = deriveRunStatus(eventStore.getEvents(runId));
+        runStore.setStatus(runId, derivedStatus);
+    }
+
+    private static EventType eventTypeFromStatus(NodeStatus status) {
+        if (status == null) return EventType.NODE_STARTED;
+        return switch (status) {
+            case STARTED -> EventType.NODE_STARTED;
+            case COMPLETED -> EventType.NODE_COMPLETED;
+            case FAILED -> EventType.NODE_FAILED;
+            case WAITING -> EventType.NODE_WAITING;
+        };
+    }
+
+    private String getCorrelationIdFromRun(String runId) {
+        ChatRunStore.RunRecord run = runStore.get(runId);
+        return run != null ? run.correlationId : null;
+    }
+
+    /** Minimal run status derivation from event stream. Nothing more. */
+    private static String deriveRunStatus(List<OloExecutionEvent> events) {
+        if (events == null || events.isEmpty()) return "running";
+        for (OloExecutionEvent e : events) {
+            if (e.getStatus() == NodeStatus.FAILED) return "failed";
         }
+        OloExecutionEvent last = events.get(events.size() - 1);
+        if (last.getNodeType() == NodeType.SYSTEM && last.getStatus() == NodeStatus.COMPLETED) return "completed";
+        if (last.getNodeType() == NodeType.HUMAN && last.getStatus() == NodeStatus.WAITING) return "waiting_human";
+        return "running";
     }
 
     @Override

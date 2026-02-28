@@ -78,7 +78,7 @@ The executor connects to Temporal and polls task queue **olo-chat**. It runs wor
 ### Create session
 
 ```bash
-curl -s -X POST http://localhost:7080/api/sessions -H "Content-Type: application/json" -d "{\"tenantId\":\"demo\"}"
+curl -s -X POST http://localhost:7080/api/sessions -H "Content-Type: application/json" -d "{\"tenantId\":\"2a2a91fb-f5b4-4cf0-b917-524d242b2e3d\"}"
 # → {"sessionId":"<SESSION_ID>"}
 ```
 

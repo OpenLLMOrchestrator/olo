@@ -15,6 +15,7 @@ This document defines:
 - API contracts
 - Scaling strategy
 - Future-proofing for replay & diff
+- **Failure and operational semantics** (callback retry, event ordering, idempotency, human signal race): see [FAILURE_AND_OPERATIONAL.md](FAILURE_AND_OPERATIONAL.md).
 
 ---
 
@@ -230,14 +231,52 @@ Shared database (post–Phase 1) holds: runs, sessions, messages, and the canoni
 ### 5.4 Run Creation Flow (Chat BE, Current)
 
 1. `POST /api/runs` with `CreateRunRequest` (tenantId, input type/message; optional `taskQueue`). Alternatively `POST /api/sessions/{sessionId}/messages` for session-bound flow.
-2. Controller validates; generates `runId` (UUID), creates run record, builds initial `OloExecutionEvent` (root, SYSTEM, STARTED) and appends it.
+2. Controller validates; generates **runId** (UUID from Chat BE; globally unique; tenant is in session/context, not in the id), creates run record, builds initial `OloExecutionEvent` (root, SYSTEM, STARTED) and appends it. Run ID ownership: see [FAILURE_AND_OPERATIONAL.md](FAILURE_AND_OPERATIONAL.md) §4.
 3. **WorkflowInput** is built via **WorkflowInputSerializer.build(...)** (tenantId, sessionId, messageId, user message as plain string, pipeline/task queue, transactionId, runId, callbackBaseUrl). Input type is **STRING**, value is the plain message; storage is LOCAL only.
 4. Service starts the Temporal workflow: `WorkflowOptions` with workflow id `run-{runId}` and effective task queue (from request or config), then `stub.start(workflowInput)`. The **WorkflowInput object** is passed so Temporal serializes it as JSON; the executor receives it as `WorkflowInput`.
 5. Service returns `CreateRunResponse(runId)`. Clients use runId for SSE (`GET /api/runs/{runId}/events`) or polling.
 
 ### 5.5 Event Streaming (Chat BE)
 
-- SSE endpoint e.g. `GET /api/runs/{runId}/events` streams `OloExecutionEvent` as they are written to the chat DB (or from a live tail). Phase 1: only Chat BE and olo-chat use it. Later: same event log is read by Admin BE for inspection, replay, and diff.
+- SSE endpoint e.g. `GET /api/runs/{runId}/events` streams **flat, ordered** `OloExecutionEvent` records (sorted by sequenceNumber). Catch-up sends existing events in order; then new events are pushed as they are written. Phase 1: only Chat BE and olo-chat use it. Later: same event log is read by Admin BE for inspection, replay, and diff.
+
+### 5.6 Chat BE: flat events only — no tree reconstruction
+
+**Chat BE must not** rebuild or expose:
+
+- Node trees  
+- Parent-child graphs  
+- Execution DAG / visualization models  
+
+Chat BE **only** stores and returns **flat ordered events** (list/stream sorted by sequenceNumber). Each event may carry `nodeId` and `parentNodeId` as payload fields (from the executor); Chat BE does **not** use those to build a tree or graph.
+
+**Where tree/DAG logic belongs:**
+
+- **Admin BE** — inspection, run details, event stream for a run (read-only; can build tree for admin UI if needed).  
+- **Replay service** — consumes flat event stream; any tree view is internal to replay.  
+- **UI transformation layer** — olo-chat or olo-ui builds parent-child / DAG views from the flat event list if needed.
+
+**Replay/diff are not Chat BE:** Chat BE must **not** expose replay or diff endpoints (e.g. no `POST /api/runs/{id}/replay`, `POST /api/diff`, `GET /api/runs/{id}/replay`). Replay is not live execution; it belongs in Admin BE, replay service, or tooling. Chat BE only does live execution and serves flat ordered events.
+
+**Stable product-level fields only:** Chat BE must **not** expose debug or internal state. Strip (do not return) workflow ID, task queue, Temporal namespace, worker identity, and internal planner metadata. Events sent over SSE are sanitized so that `metadata`, `input`, and `output` maps do not contain these internal keys. Run responses (GET run) do not include task queue or Temporal identifiers.
+
+**No execution interpretation:** Chat BE must **not** decide next node type, compute execution branches, simulate transitions, or validate node transition legality. **Workflow owns execution semantics.** BE owns **projection only**: append events from the executor, store them, derive run status from the event stream, and serve flat ordered events. Any logic that interprets “what should happen next” or “is this transition allowed” belongs in the workflow/executor, not in Chat BE.
+
+**No complex aggregation over event history:** Chat BE must **not** summarize tool performance, compute execution depth, count planner steps, or calculate diff candidates. BE should not analyze history beyond **current status** (e.g. one derived status field per run). Aggregations and analytics over the event log belong in Admin BE, analytics pipelines, or replay/diff tooling.
+
+### 5.7 Mental model: projection + command gateway
+
+**Chat BE is:** A **projection** (store and serve events; derive current run status) and a **command gateway** (start workflow, signal human input, accept executor callbacks). Nothing more.
+
+**Chat BE is NOT:** A workflow engine, a state machine interpreter, a replay engine, a debugging tool, or an analytics service.
+
+**Run status derivation — keep minimal:** Only: if any event is FAILED → failed; else if last event is SYSTEM + COMPLETED → completed; else if last event is HUMAN + WAITING → waiting_human; else → running. Nothing more.
+
+**SSE:** Filtering by runId is fine. No transformation logic (beyond stripping internal keys for API safety).
+
+**Layers:** controller → service (RunService) → temporalClient (SDK) / executionEventStore. Nothing else. No extra domain logic layer interpreting execution.
+
+**Self-audit checklist (Chat BE = thin orchestration boundary):** No class named *Replay*; no tree reconstruction; no diff logic; no planner simulation; no historical analytics; no Temporal history reading. No replay hooks, debug utilities, tree-building logic, deep execution interpretation, or cross-run comparison. If any appear → remove. Keep run/message/event storage and minimal status derivation only.
 
 ---
 
@@ -273,28 +312,36 @@ This section defines **olo (Chat BE)** cleanly: core domain objects and the live
 | runId       | Unique run identifier (Temporal workflow) |
 | sessionId   | Session this run belongs to          |
 | messageId   | User message that triggered this run |
-| status      | running \| completed \| failed \| waiting_human |
+| status      | running \| completed \| failed \| waiting_human — **derived from event stream** (see below), not set by executor |
+| correlationId | Cross-service tracing; set at run creation, propagated to every event |
+| workflowVersion, modelVersion, plannerVersion | Execution versioning for diff (optional at creation) |
 | model       | Model identifier used for this run   |
 | temperature | Model temperature                    |
 | ragEnabled  | Whether RAG was enabled              |
 | createdAt   | Creation timestamp                  |
 
-**ExecutionEvent**
+**Run status derivation:** Run status is **derived from the latest ExecutionEvent stream** (single source of truth). After each append, the backend derives status from the event log (e.g. last HUMAN WAITING → `waiting_human`, last SYSTEM COMPLETED → `completed`, any FAILED → `failed`, else `running`). This avoids dual state and keeps status consistent with the event stream.
 
-This table is the **future goldmine** for replay, diff, and audit. Stored in the chat DB (Phase 1); Chat BE writes. Later, when Admin BE exists, the same table is the shared execution store; Admin BE reads for inspection, replay, and diff.
+**ExecutionEvent (event store as product)**
 
-| Field        | Description                                |
-|-------------|--------------------------------------------|
-| eventId     | Unique event identifier (e.g. sequence)   |
-| runId       | Run this event belongs to                  |
-| stepId      | Step (node) identifier within the run      |
-| parentStepId| Parent step in the execution tree; null for root |
-| stepType    | SYSTEM \| PLANNER \| MODEL \| TOOL \| HUMAN |
-| status      | STARTED \| COMPLETED \| FAILED \| WAITING |
-| inputJson   | Step input (JSON)                         |
-| outputJson  | Step output (JSON)                        |
-| metadataJson| Tenant, correlation IDs, errors (JSON)    |
-| timestamp   | Event time (epoch millis)                 |
+This table is **not just logging** — it is a **core domain object** and the foundation for replay, diff, admin UI, audit, observability, model evaluation, regression testing, and experiment comparison. Stored in the chat DB (Phase 1); Chat BE writes. Later, when Admin BE exists, the same table is the shared execution store; Admin BE reads for inspection, replay, and diff. **Source of truth for execution is Temporal;** this store is a **projection** from executor callbacks (see [FAILURE_AND_OPERATIONAL.md](FAILURE_AND_OPERATIONAL.md)).
+
+**Treat it like gold:** The store must be **append-only**; indexed by **(runId, sequenceNumber)** and by **tenantId**; efficient to **stream** (SSE, replay) and to **diff** (compare runs). No dual state: run status is **derived from the event stream** (see Run status derivation below), not stored separately.
+
+| Field          | Description                                |
+|----------------|--------------------------------------------|
+| eventVersion   | Schema version (e.g. 1) for evolution     |
+| eventId        | Unique event identifier (e.g. sequence)   |
+| runId          | Run this event belongs to                  |
+| sequenceNumber | Order within run (for deterministic replay)|
+| stepId         | Step (node) identifier within the run      |
+| parentStepId   | Parent step in the execution tree; null for root |
+| stepType       | SYSTEM \| PLANNER \| MODEL \| TOOL \| HUMAN |
+| status         | STARTED \| COMPLETED \| FAILED \| WAITING |
+| inputJson      | Step input (JSON)                         |
+| outputJson     | Step output (JSON)                        |
+| metadataJson   | Tenant, correlation IDs, errors (JSON)    |
+| timestamp      | Event time (epoch millis)                 |
 
 *Mapping:* `stepId` / `parentStepId` / `stepType` correspond to `nodeId` / `parentNodeId` / `nodeType` in the in-memory execution model (`OloExecutionEvent`); the persisted schema uses the above names for clarity in the shared store.
 
@@ -316,12 +363,9 @@ This table is the **future goldmine** for replay, diff, and audit. Stored in the
    - **Streams** the same event to olo-chat via **SSE** (e.g. `GET /api/runs/{runId}/events`).
 
 5. **If HUMAN step**
-   - Workflow emits an event with stepType=HUMAN, status=WAITING.
-   - Chat BE persists the **WAITING** event and streams it.
-   - UI shows approval / input form; user responds in olo-chat.
-   - User response is sent to Chat BE (e.g. `POST /api/runs/{runId}/human-input`).
-   - Chat BE **signals** the Temporal workflow with the human response.
-   - Workflow continues; Chat BE persists HUMAN COMPLETED event and streams it.
+   - The **workflow** enters a **workflow state** waiting on a signal (`Workflow.await`). An activity reports stepType=HUMAN, status=WAITING to the BE (so the UI can show “waiting for human”). This is **not** a long-running activity; the workflow thread is blocked until the signal arrives.
+   - Chat BE persists the **WAITING** event and streams it. UI shows approval / input form; user responds in olo-chat.
+   - User response is sent to Chat BE (e.g. `POST /api/runs/{runId}/human-input`). Chat BE **signals** the Temporal workflow with the human response. Workflow unblocks and continues; Chat BE persists HUMAN COMPLETED event and streams it. See [FAILURE_AND_OPERATIONAL.md](FAILURE_AND_OPERATIONAL.md) for human signal race (double submit) behavior.
 
 **Summary:** All live behavior (create message, create run, start workflow, persist events, stream via SSE, handle human steps and signal) is handled in **Chat BE**. Phase 1: one simple chat DB. Later: Admin BE reads the same ExecutionEvent table for inspection, replay, and diff.
 
@@ -361,25 +405,34 @@ Defined in the backend/domain (e.g. `NodeType` enum):
 
 ### 7.1 OloExecutionEvent (Core Structure)
 
-Used for: workflow start, planner decision, model call, tool call, human wait/completion, retry, failure. Required for replay and diff.
+Used for: workflow start, planner decision, model call, tool call, human wait/completion, retry, failure. Required for replay and diff. Schema is versioned for evolution.
 
 **Fields:**
 
+- **eventVersion** – Schema version (e.g. 1). Increment when fields or semantics change; enables backward compatibility and replay.
 - **runId** – Identifies the run.
 - **nodeId** – Unique node identifier within the run (e.g. `"root"`, `"n1"`, `"n2"`).
 - **parentNodeId** – Parent in the node tree; null for root.
 - **nodeType** – SYSTEM | PLANNER | MODEL | TOOL | HUMAN.
 - **status** – STARTED | COMPLETED | FAILED | WAITING.
+- **eventType** – Explicit type for analytics: NODE_STARTED | NODE_COMPLETED | NODE_FAILED | NODE_WAITING. Cleaner than deriving from nodeType + status.
 - **timestamp** – Epoch millis.
+- **sequenceNumber** – **Required** for executor callbacks; idempotency key is (runId, sequenceNumber). Events always served sorted by sequenceNumber (see [FAILURE_AND_OPERATIONAL.md](FAILURE_AND_OPERATIONAL.md)).
+- **correlationId** – Cross-service tracing; set at run creation and propagated to every event.
 - **input** – Node input (e.g. prompt, tool name, human question).
 - **output** – Node output (e.g. model response, tool result, human reply).
-- **metadata** – Tenant, correlation IDs, error details, etc.
+- **metadata** – Tenant, error details, etc.
 
 ### 7.2 Semantics
 
 - One event per state transition (e.g. node STARTED then COMPLETED or FAILED).
-- Ordering is critical: events are appended in sequence; replay/diff consume them in order.
+- **sequenceNumber** is enforced strictly: required for callbacks; duplicate rejected (409); events always sorted by sequenceNumber for replay/diff.
+- **Event idempotency key:** (runId, sequenceNumber) — unique constraint; retries do not create duplicate events.
 - No removal or mutation of past events; corrections via new events if needed.
+
+### 7.3 Execution versioning (run-level)
+
+Store **workflowVersion**, **modelVersion**, **plannerVersion** on the run (e.g. in CreateRunRequest / RunRecord). So diff actually means something: when comparing two runs, you know which workflow/model/planner versions produced each. Optional at creation; returned in GET run and available for admin/diff.
 
 ---
 
@@ -387,11 +440,11 @@ Used for: workflow start, planner decision, model call, tool call, human wait/co
 
 ### 8.1 Lifecycle
 
-1. Workflow decides a human step is required; it starts an activity or child node with `NodeType.HUMAN`, status `WAITING`.
-2. Backend (or workflow) emits an `OloExecutionEvent` for that node (WAITING).
+1. Workflow decides a human step is required. The **workflow** enters a **workflow state** waiting on a signal (`Workflow.await`); it is **not** a long-running activity. An activity **reports** an `OloExecutionEvent` with `NodeType.HUMAN`, status `WAITING` to the BE so the UI can show "waiting for human."
+2. Backend persists the WAITING event and streams it via SSE.
 3. Client is notified via SSE (or poll); UI shows “waiting for human” and where to provide input.
-4. User submits input via REST (e.g. `POST /api/runs/{runId}/human-input` or similar).
-5. Backend signals the workflow with the human response; workflow completes the human node and continues.
+4. User submits input via REST (e.g. `POST /api/runs/{runId}/human-input`). Backend should reject a second submit if the run is no longer in `waiting_human` (see [FAILURE_AND_OPERATIONAL.md](FAILURE_AND_OPERATIONAL.md) §7).
+5. Backend signals the workflow with the human response; workflow unblocks and continues.
 6. New event is emitted: HUMAN node COMPLETED with output containing the user’s response.
 
 ### 8.2 Design Choices
@@ -411,10 +464,11 @@ Used for: workflow start, planner decision, model call, tool call, human wait/co
 - **Written by:** **Chat BE only** (when starting a run; when workflow/activities report node start/complete/fail).
 - **Read by:** **Chat BE** for SSE, “get run status,” and run/session APIs; **Admin BE** (later) for inspection, replay, and diff (read-only).
 
-### 9.2 Execution Events
+### 9.2 Execution Events (event store as product)
 
-- **Store:** Append-only log of ExecutionEvent (same shape as `OloExecutionEvent`) per run—e.g. table keyed by runId + sequence/timestamp—in the chat DB (Phase 1) / shared execution data store (later).
-- Events are never deleted or mutated; replay and diff (post–Phase 1) operate on this canonical log.
+- **Store:** Append-only log of ExecutionEvent (same shape as `OloExecutionEvent`) per run. **Indexed by (runId, sequenceNumber)** and by **tenantId**; efficient to stream and to diff. In Phase 1: in-memory or simple DB; later: shared execution data store.
+- Events are **never deleted or mutated**. This store powers replay, diff, admin UI, audit, observability, evaluation, and regression testing — treat it as a core product asset.
+- **UNIQUE(runId, sequenceNumber):** Backend rejects duplicate sequence numbers (e.g. 409 Conflict). Events are always served **sorted by sequenceNumber** for replay/diff correctness.
 
 ### 9.3 Workflow Input (Large Payloads)
 

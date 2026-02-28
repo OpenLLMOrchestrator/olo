@@ -30,11 +30,13 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
         if (input == null) return;
         String runId = input.getContext() != null ? input.getContext().getRunId() : "";
         String callbackBaseUrl = input.getContext() != null ? input.getContext().getCallbackBaseUrl() : "";
+        String correlationId = input.getContext() != null ? input.getContext().getCorrelationId() : null;
         String userMessage = extractUserQueryMessage(input);
         String sessionId = input.getContext() != null ? input.getContext().getSessionId() : "";
         String messageId = "";
+        long seq = 1; // BE owns sequence 0 (root); executor uses 1, 2, 3, ...
 
-        activities.reportEvent(runId, callbackBaseUrl, "root", null, "SYSTEM", "STARTED",
+        activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_STARTED", correlationId, "root", null, "SYSTEM", "STARTED",
                 Map.of("message", userMessage, "type", "chat"),
                 null, Map.of("sessionId", sessionId != null ? sessionId : "", "messageId", messageId != null ? messageId : ""));
 
@@ -44,7 +46,7 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
         while (true) {
             String next = activities.planner(userMessage, String.join(",", stepsDone));
 
-            activities.reportEvent(runId, callbackBaseUrl, "planner-" + stepsDone.size(), "root", "PLANNER", "COMPLETED",
+            activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_COMPLETED", correlationId, "planner-" + stepsDone.size(), "root", "PLANNER", "COMPLETED",
                     Map.of("userMessage", userMessage != null ? userMessage : "", "stepsDone", stepsDone),
                     Map.of("nextStep", next), null);
 
@@ -52,7 +54,7 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
                 case "TOOL":
                     Map<String, Object> toolParams = Map.of("query", userMessage != null ? userMessage : "");
                     Map<String, Object> toolResult = activities.runTool("search_news", toolParams);
-                    activities.reportEvent(runId, callbackBaseUrl, "tool-1", "planner-" + stepsDone.size(), "TOOL", "COMPLETED",
+                    activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_COMPLETED", correlationId, "tool-1", "planner-" + stepsDone.size(), "TOOL", "COMPLETED",
                             toolParams, toolResult, null);
                     stepsDone.add("TOOL");
                     contextForModel = toolResult != null && toolResult.get("result") != null ? toolResult.get("result").toString() : null;
@@ -60,7 +62,7 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
 
                 case "MODEL":
                     String modelResponse = activities.runModel(userMessage, contextForModel);
-                    activities.reportEvent(runId, callbackBaseUrl, "model-1", "planner-" + stepsDone.size(), "MODEL", "COMPLETED",
+                    activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_COMPLETED", correlationId, "model-1", "planner-" + stepsDone.size(), "MODEL", "COMPLETED",
                             Map.of("context", contextForModel != null ? contextForModel : ""),
                             Map.of("response", modelResponse), null);
                     stepsDone.add("MODEL");
@@ -68,10 +70,10 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
                     break;
 
                 case "HUMAN":
-                    activities.reportEvent(runId, callbackBaseUrl, "human-1", "planner-" + stepsDone.size(), "HUMAN", "WAITING",
+                    activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_WAITING", correlationId, "human-1", "planner-" + stepsDone.size(), "HUMAN", "WAITING",
                             Map.of("prompt", "Please approve or provide input."), null, null);
                     Workflow.await(() -> humanInputReceived);
-                    activities.reportEvent(runId, callbackBaseUrl, "human-1", "planner-" + stepsDone.size(), "HUMAN", "COMPLETED",
+                    activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_COMPLETED", correlationId, "human-1", "planner-" + stepsDone.size(), "HUMAN", "COMPLETED",
                             null, Map.of("approved", humanApproved, "message", humanMessage != null ? humanMessage : ""), null);
                     stepsDone.add("HUMAN");
                     humanInputReceived = false;
@@ -79,7 +81,7 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
 
                 case "DONE":
                 default:
-                    activities.reportEvent(runId, callbackBaseUrl, "root", null, "SYSTEM", "COMPLETED",
+                    activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_COMPLETED", correlationId, "root", null, "SYSTEM", "COMPLETED",
                             null, Map.of("steps", stepsDone), null);
                     return;
             }

@@ -2,6 +2,10 @@
 
 Use Swagger UI to exercise the Olo chat backend APIs from your browser. The backend and executor (olo-executor) must be running (see [DEMO.md](DEMO.md)).
 
+For a single reference of **example request/response payloads for all APIs**, see [API_PAYLOADS.md](API_PAYLOADS.md).
+
+**Authentication:** For the time being, **no JWT or auth is required** for the REST API used by Swagger. WebSocket handshake can also run without a token when `olo.ws.jwt.required=false` (default): the session is assigned the **default tenant** (`olo.ws.default-tenant` = `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`), which is always available. Use this tenantId when creating sessions/runs in Swagger so you can subscribe to run events over WebSocket without supplying a Bearer token.
+
 ---
 
 ## 1. Open Swagger UI
@@ -33,7 +37,7 @@ Without the executor, sending a message will start a workflow but you won’t se
 
 ```json
 {
-  "tenantId": "demo"
+  "tenantId": "2a2a91fb-f5b4-4cf0-b917-524d242b2e3d"
 }
 ```
 
@@ -148,7 +152,7 @@ Or with a message:
 **Create session**
 
 ```json
-{ "tenantId": "demo" }
+{ "tenantId": "2a2a91fb-f5b4-4cf0-b917-524d242b2e3d" }
 ```
 
 **Send message** (optional `taskQueue` from frontend)

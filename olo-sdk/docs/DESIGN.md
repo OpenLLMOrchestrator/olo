@@ -4,22 +4,27 @@
 
 The Olo SDK (`olo-sdk`) is a Java library that wraps the Temporal Java SDK and exposes a configured client to the Olo backend and other Java clients. Its purpose is to centralize Temporal **configuration and connection lifecycle** (target, namespace, stubs, `WorkflowClient`, `close()`).
 
-**Explicit scope:** **olo-sdk abstracts connection and lifecycle only. It does not abstract workflow semantics.** The backend still imports the Temporal SDK, builds `WorkflowOptions`, uses untyped stubs, and knows workflow type names. So the backend remains tightly coupled to Temporal for workflow operations; the SDK is a connection factory, not a workflow abstraction. This is intentional. See [ARCHITECTURE.md](ARCHITECTURE.md) §1.1.
+**Explicit scope:** **olo-sdk abstracts connection and lifecycle only. It does not abstract workflow semantics.** The backend still imports the Temporal SDK, builds `WorkflowOptions`, and uses untyped stubs. The SDK **does** encapsulate the workflow type name via `newChatWorkflowStub(WorkflowOptions)`, so the backend never uses the workflow type string. So the SDK is **in-between**: connection factory + workflow-type encapsulation, but not a full workflow abstraction (no typed interfaces, no ownership of task queue or payload). This is intentional for v1. See [ARCHITECTURE.md](ARCHITECTURE.md) §1.1.
 
 ## 2. Goals and Non-goals
 
 - **Goals (current)**
   - Encapsulate Temporal connection details (service stubs, target, namespace) and client lifecycle.
   - Expose a single entry point (`TemporalClient`) with a builder; no fake or unused configuration.
+  - Encapsulate the workflow type name so the backend does not depend on it (`newChatWorkflowStub`).
   - Allow versioned evolution of the SDK independently of the backend.
 
 - **Goals (planned / optional)**
-  - Typed workflow interfaces and stub factories would reduce backend–Temporal coupling; not required if connection-only scope is permanent.
+  - Typed workflow interfaces and stub factories would reduce backend–Temporal coupling further; not required if current scope is permanent.
 
-- **Non-goals**
-  - Providing a fully generic Temporal wrapper suitable for all domains.
-  - Managing persistence or domain models (those stay in the backend or other services).
-  - Hiding Temporal SDK types from the backend for workflow operations (current design does not do this).
+- **Non-goals (explicit)**
+  - Does **not** define the workflow interface or workflow/activity implementations (those live in olo-executor).
+  - Does **not** own or configure task queue (backend owns it; passed in `WorkflowOptions`).
+  - Does **not** define or own the workflow payload (WorkflowInput is olo-worker-input; backend builds it).
+  - Does **not** abstract signals (backend uses Temporal SDK for signal method name and parameters).
+  - Does **not** provide a fully generic Temporal wrapper suitable for all domains.
+  - Does **not** manage persistence or domain models (those stay in the backend or other services).
+  - Does **not** hide Temporal SDK types from the backend for workflow operations (backend still uses `WorkflowOptions`, `WorkflowStub`, etc.).
 
 ## 3. High-level Architecture
 

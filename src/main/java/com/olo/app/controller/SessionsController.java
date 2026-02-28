@@ -4,6 +4,7 @@ import com.olo.app.api.request.CreateSessionRequest;
 import com.olo.app.api.request.SendMessageRequest;
 import com.olo.app.api.response.CreateSessionResponse;
 import com.olo.app.api.response.SendMessageResponse;
+import com.olo.app.domain.EventType;
 import com.olo.app.domain.NodeStatus;
 import com.olo.app.domain.NodeType;
 import com.olo.app.domain.OloExecutionEvent;
@@ -80,30 +81,22 @@ public class SessionsController {
 
         String messageId = UUID.randomUUID().toString();
         String runId = UUID.randomUUID().toString();
+        String correlationId = UUID.randomUUID().toString();
 
         messageStore.put(new ChatMessageStore.MessageRecord(
                 messageId, sessionId, "user", request.getContent(), runId));
-        runStore.put(new ChatRunStore.RunRecord(runId, sessionId, messageId));
-
-        OloExecutionEvent startEvent = new OloExecutionEvent();
-        startEvent.setRunId(runId);
-        startEvent.setNodeId("root");
-        startEvent.setParentNodeId(null);
-        startEvent.setNodeType(NodeType.SYSTEM);
-        startEvent.setStatus(NodeStatus.STARTED);
-        startEvent.setTimestamp(System.currentTimeMillis());
-        startEvent.setInput(Map.of("message", request.getContent(), "type", "chat"));
-        startEvent.setOutput(null);
-        startEvent.setMetadata(Map.of("tenantId", session.tenantId, "sessionId", sessionId, "messageId", messageId));
+        runStore.put(new ChatRunStore.RunRecord(runId, sessionId, messageId, session.tenantId, correlationId, null, null, null));
 
         runService.appendEvent(runId, "root", null, "SYSTEM", "STARTED",
-                startEvent.getInput(), null, startEvent.getMetadata());
+                Map.of("message", request.getContent(), "type", "chat"), null,
+                Map.of("tenantId", session.tenantId, "sessionId", sessionId, "messageId", messageId),
+                null, null, EventType.NODE_STARTED, correlationId);
 
         String pipeline = (request.getTaskQueue() != null && !request.getTaskQueue().isBlank())
                 ? request.getTaskQueue().trim()
                 : taskQueue;
         com.olo.input.model.WorkflowInput workflowInput = WorkflowInputSerializer.build(
-                session.tenantId, sessionId, messageId, request.getContent(), pipeline, runId, runId, callbackBaseUrl);
+                session.tenantId, sessionId, messageId, request.getContent(), pipeline, runId, runId, callbackBaseUrl, correlationId);
         runService.startWorkflow(runId, workflowInput, request.getTaskQueue());
 
         return ResponseEntity.ok(new SendMessageResponse(messageId, runId));

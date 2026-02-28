@@ -1,6 +1,13 @@
 package com.olo.app.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.olo.app.store.*;
+import com.olo.app.ws.DefaultJwtTenantExtractor;
+import com.olo.app.ws.JwtTenantExtractor;
+import com.olo.app.ws.RunEventWebSocketHandler;
+import com.olo.app.ws.RunEventWebSocketRegistry;
+import com.olo.app.ws.WebSocketAuthHandshakeHandler;
+import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 import com.olo.sdk.TemporalClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -30,8 +37,35 @@ public class DemoConfig {
     }
 
     @Bean
-    public RunEventBroadcaster runEventBroadcaster(ExecutionEventStore executionEventStore) {
-        return new RunEventBroadcaster(executionEventStore);
+    public RunEventWebSocketRegistry runEventWebSocketRegistry() {
+        return new RunEventWebSocketRegistry();
+    }
+
+    @Bean
+    public RunEventBroadcaster runEventBroadcaster(ExecutionEventStore executionEventStore,
+                                                   RunEventWebSocketRegistry runEventWebSocketRegistry,
+                                                   ObjectMapper objectMapper) {
+        return new RunEventBroadcaster(executionEventStore, runEventWebSocketRegistry, objectMapper);
+    }
+
+    @Bean
+    public RunEventWebSocketHandler runEventWebSocketHandler(ExecutionEventStore executionEventStore,
+                                                             RunEventWebSocketRegistry runEventWebSocketRegistry,
+                                                             ChatRunStore chatRunStore,
+                                                             ObjectMapper objectMapper) {
+        return new RunEventWebSocketHandler(executionEventStore, runEventWebSocketRegistry, chatRunStore, objectMapper);
+    }
+
+    @Bean
+    public JwtTenantExtractor jwtTenantExtractor(ObjectMapper objectMapper) {
+        return new DefaultJwtTenantExtractor(objectMapper);
+    }
+
+    @Bean
+    public WebSocketAuthHandshakeHandler webSocketAuthHandshakeHandler(JwtTenantExtractor jwtTenantExtractor,
+                                                                       @Value("${olo.ws.jwt.required:true}") boolean wsJwtRequired,
+                                                                       @Value("${olo.ws.default-tenant:2a2a91fb-f5b4-4cf0-b917-524d242b2e3d}") String wsDefaultTenant) {
+        return new WebSocketAuthHandshakeHandler(new DefaultHandshakeHandler(), jwtTenantExtractor, wsJwtRequired, wsDefaultTenant);
     }
 
     @Bean

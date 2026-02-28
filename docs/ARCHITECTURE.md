@@ -147,5 +147,6 @@ For a complete explanation of how the SDK and backend work together (config, wor
 - **[SDK_AND_BACKEND.md](SDK_AND_BACKEND.md)** — Complete guide: SDK scope, backend usage, WorkflowInput, config, and responsibilities.
 - **[DESIGN.md](DESIGN.md)** — Detailed design: boundaries, responsibilities, SDK/backend architecture, domain objects, event model, APIs, persistence, scaling, replay/diff.
 - **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** — WorkflowInput schema (version 1.0), example payload, builder (WorkflowInputBuilder), and relation to backend/executor.
+- **[FAILURE_AND_OPERATIONAL.md](FAILURE_AND_OPERATIONAL.md)** — Callback retry semantics, event ordering, human step semantics, run ID ownership, failure scenarios, replay vs projection, idempotency, human signal race.
 - **[DEMO.md](DEMO.md)** — How to build and run backend, Temporal, worker, and exercise the chat flow.
 - **olo-sdk/docs/ARCHITECTURE.md** — SDK-specific architecture (TemporalClient, backend integration).

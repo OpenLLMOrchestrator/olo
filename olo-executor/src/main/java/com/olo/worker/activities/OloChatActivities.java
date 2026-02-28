@@ -10,8 +10,8 @@ import java.util.Map;
 public interface OloChatActivities {
 
     @ActivityMethod
-    void reportEvent(String runId, String callbackBaseUrl, String nodeId, String parentNodeId,
-                     String nodeType, String status,
+    void reportEvent(String runId, String callbackBaseUrl, long sequenceNumber, String eventType, String correlationId,
+                     String nodeId, String parentNodeId, String nodeType, String status,
                      Map<String, Object> input, Map<String, Object> output, Map<String, Object> metadata);
 
     @ActivityMethod
