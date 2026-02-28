@@ -1,6 +1,7 @@
-package com.olo.worker;
+package com.olo.worker.activities.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.olo.worker.activities.OloChatActivities;
 import io.temporal.activity.Activity;
 
 import java.net.URI;

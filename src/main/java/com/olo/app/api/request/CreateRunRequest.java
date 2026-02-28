@@ -1,4 +1,4 @@
-package com.olo.app.api;
+package com.olo.app.api.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

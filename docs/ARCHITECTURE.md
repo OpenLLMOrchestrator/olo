@@ -8,7 +8,7 @@ High-level architecture of the **Olo** system: chat backend, SDK, Temporal, and 
 
 Olo provides a **chat flow** with planner, optional tool calls, model, and optional human-in-the-loop steps. Execution is durable and observable via a stream of execution events.
 
-**Phase 1 (current):** Live path only: **olo-chat** (UI) → **Chat BE** → **olo-sdk** → **Temporal**; workers run activities and call back to the backend. A simple chat database holds sessions, messages, runs, and the execution event log.
+**Phase 1 (current):** Live path only: **olo-chat** (UI) → **Chat BE** → **olo-sdk** → **Temporal**; the executor (olo-executor) runs workflows and activities and calls back to the backend. A simple chat database holds sessions, messages, runs, and the execution event log.
 
 **Later:** An Admin BE and UI (olo-ui, olo-ui-be) will **read** the same execution store for inspection, replay, and diff. Chat BE remains the only writer and the only component that talks to Temporal.
 
@@ -110,6 +110,26 @@ All execution visibility (planner, tool, model, human) is through **OloExecution
 | **olo-worker-input/** | Serialize and deserialize workflow input (WorkflowInput JSON); model, cache/file handling for large payloads. Gradle subproject; publish to Maven local for olo-executor. |
 | **docs/**         | DESIGN.md (detailed design), DEMO.md (run instructions), this file. |
 
+### Backend package layout (com.olo.app)
+
+- **api.request** / **api.response** — DTOs for REST (e.g. CreateRunRequest, CreateRunResponse).
+- **config** — Spring configuration (DemoConfig, WebConfig, etc.).
+- **controller** — REST controllers (RunsController, SessionsController, HealthController).
+- **domain** — Execution model (NodeType, NodeStatus, OloExecutionEvent).
+- **filter** — Request logging filter.
+- **service** — RunService interface.
+- **service.impl** — RunServiceImpl (workflow start, signal, append event).
+- **store** — In-memory stores (ChatRunStore, ExecutionEventStore, etc.).
+- **workflow.impl** — WorkflowInputSerializer (builds WorkflowInput for the executor).
+
+### olo-executor package layout (com.olo.worker)
+
+- **workflow** — OloChatWorkflow interface.
+- **workflow.impl** — OloChatWorkflowImpl.
+- **activities** — OloChatActivities interface.
+- **activities.impl** — OloChatActivitiesImpl.
+- **OloExecutorMain** — Bootstrap (registers workflow and activities, starts worker).
+
 ---
 
 ## 7. SDK and Backend (Summary)
@@ -126,6 +146,6 @@ For a complete explanation of how the SDK and backend work together (config, wor
 
 - **[SDK_AND_BACKEND.md](SDK_AND_BACKEND.md)** — Complete guide: SDK scope, backend usage, WorkflowInput, config, and responsibilities.
 - **[DESIGN.md](DESIGN.md)** — Detailed design: boundaries, responsibilities, SDK/backend architecture, domain objects, event model, APIs, persistence, scaling, replay/diff.
-- **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** — WorkflowInput schema (version 2.0), example payload, and relation to backend/worker.
+- **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** — WorkflowInput schema (version 1.0), example payload, builder (WorkflowInputBuilder), and relation to backend/executor.
 - **[DEMO.md](DEMO.md)** — How to build and run backend, Temporal, worker, and exercise the chat flow.
 - **olo-sdk/docs/ARCHITECTURE.md** — SDK-specific architecture (TemporalClient, backend integration).

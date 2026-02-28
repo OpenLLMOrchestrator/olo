@@ -1,4 +1,4 @@
-package com.olo.app.api;
+package com.olo.app.api.response;
 
 public class CreateSessionResponse {
 

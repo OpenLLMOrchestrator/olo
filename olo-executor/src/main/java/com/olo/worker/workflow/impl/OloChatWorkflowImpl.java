@@ -1,6 +1,8 @@
-package com.olo.worker;
+package com.olo.worker.workflow.impl;
 
 import com.olo.input.model.WorkflowInput;
+import com.olo.worker.activities.OloChatActivities;
+import com.olo.worker.workflow.OloChatWorkflow;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.workflow.Workflow;
 

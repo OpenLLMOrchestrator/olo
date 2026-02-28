@@ -1,4 +1,4 @@
-package com.olo.app.api;
+package com.olo.app.api.request;
 
 /**
  * Request body for POST /api/runs/{runId}/human-input (user approval or text).

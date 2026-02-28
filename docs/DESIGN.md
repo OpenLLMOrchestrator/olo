@@ -216,8 +216,8 @@ Shared database (post–Phase 1) holds: runs, sessions, messages, and the canoni
 
 ### 5.2 Chat BE (olo) — Layers
 
-- **Controller:** REST under `/api/**`, SSE for event stream; DTOs, `@Valid` validation (e.g. `CreateRunRequest` / `CreateRunResponse`, optional `taskQueue` in request body).
-- **Service:** RunService handles run lifecycle: append events, start workflow, signal human input. Builds **WorkflowInput** via **WorkflowInputSerializer** (olo-worker-input model), then calls **olo-sdk**: `temporalClient.newChatWorkflowStub(options)` and `stub.start(workflowInput)`. Task queue comes from request or config (`olo.temporal.task-queue`). Writes events to the chat DB and streams via SSE.
+- **Controller:** REST under `/api/**`, SSE for event stream; DTOs in **api.request** / **api.response** (e.g. `CreateRunRequest`, `CreateRunResponse`), `@Valid` validation, optional `taskQueue` in request body.
+- **Service:** **RunService** (interface) and **RunServiceImpl** (in **service.impl**) handle run lifecycle: append events, start workflow, signal human input. Builds **WorkflowInput** via **WorkflowInputSerializer** (in **workflow.impl**; olo-worker-input model and `WorkflowInput.builder()`), then calls **olo-sdk**: `temporalClient.newChatWorkflowStub(options)` and `stub.start(workflowInput)`. Task queue comes from request or config (`olo.temporal.task-queue`). Writes events to the chat DB and streams via SSE.
 - **SDK usage:** RunService receives `TemporalClient` from config; all Temporal traffic goes through olo-sdk. Workflow type is set in SDK builder (config or `OLO_WORKFLOW_TYPE`).
 - **Config:** DemoConfig provides Temporal target, namespace, workflow type, task queue, callback base URL; `TemporalClient` bean is built with target, namespace, workflowType.
 
@@ -232,7 +232,7 @@ Shared database (post–Phase 1) holds: runs, sessions, messages, and the canoni
 1. `POST /api/runs` with `CreateRunRequest` (tenantId, input type/message; optional `taskQueue`). Alternatively `POST /api/sessions/{sessionId}/messages` for session-bound flow.
 2. Controller validates; generates `runId` (UUID), creates run record, builds initial `OloExecutionEvent` (root, SYSTEM, STARTED) and appends it.
 3. **WorkflowInput** is built via **WorkflowInputSerializer.build(...)** (tenantId, sessionId, messageId, user message as plain string, pipeline/task queue, transactionId, runId, callbackBaseUrl). Input type is **STRING**, value is the plain message; storage is LOCAL only.
-4. Service starts the Temporal workflow: `WorkflowOptions` with workflow id `run-{runId}` and effective task queue (from request or config), then `stub.start(workflowInput)`. The **WorkflowInput object** is passed so Temporal serializes it as JSON; the worker receives it as `WorkflowInput`.
+4. Service starts the Temporal workflow: `WorkflowOptions` with workflow id `run-{runId}` and effective task queue (from request or config), then `stub.start(workflowInput)`. The **WorkflowInput object** is passed so Temporal serializes it as JSON; the executor receives it as `WorkflowInput`.
 5. Service returns `CreateRunResponse(runId)`. Clients use runId for SSE (`GET /api/runs/{runId}/events`) or polling.
 
 ### 5.5 Event Streaming (Chat BE)
@@ -418,7 +418,7 @@ Used for: workflow start, planner decision, model call, tool call, human wait/co
 
 ### 9.3 Workflow Input (Large Payloads)
 
-- **olo-worker-input** handles large or sensitive input: producer side writes to cache or file; consumer side (worker) reads via `WorkflowInput` (version, inputs, context, routing, metadata).
+- **olo-worker-input** handles large or sensitive input: producer side writes to cache or file; consumer side (executor) reads via `WorkflowInput` (version, inputs, context, routing, metadata). Model includes `WorkflowInput`, `WorkflowInputBuilder` (use `WorkflowInput.builder()`), and DTOs in `com.olo.input.model`.
 - Temporal payload size limits are avoided by storing payloads externally and passing references in workflow args; SDK/workers use the same input model for consistency.
 
 ### 9.4 What Temporal Stores

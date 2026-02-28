@@ -1,4 +1,4 @@
-package com.olo.worker;
+package com.olo.worker.workflow;
 
 import io.temporal.workflow.SignalMethod;
 import io.temporal.workflow.WorkflowMethod;

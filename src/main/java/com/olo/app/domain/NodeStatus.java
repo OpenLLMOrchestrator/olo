@@ -1,4 +1,4 @@
-package com.olo.app.execution;
+package com.olo.app.domain;
 
 public enum NodeStatus {
     STARTED,

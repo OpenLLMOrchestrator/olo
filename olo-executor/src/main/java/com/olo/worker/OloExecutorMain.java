@@ -1,5 +1,7 @@
 package com.olo.worker;
 
+import com.olo.worker.activities.impl.OloChatActivitiesImpl;
+import com.olo.worker.workflow.impl.OloChatWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;

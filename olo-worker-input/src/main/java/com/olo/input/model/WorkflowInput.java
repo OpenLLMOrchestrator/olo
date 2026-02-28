@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -112,8 +111,8 @@ public final class WorkflowInput {
         }
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static WorkflowInputBuilder builder() {
+        return new WorkflowInputBuilder();
     }
 
     @Override
@@ -131,56 +130,5 @@ public final class WorkflowInput {
     @Override
     public int hashCode() {
         return Objects.hash(version, inputs, context, routing, metadata);
-    }
-
-    public static final class Builder {
-        private String version;
-        private final List<InputItem> inputs = new ArrayList<>();
-        private Context context;
-        private Routing routing;
-        private Metadata metadata;
-
-        public Builder version(String version) {
-            this.version = version;
-            return this;
-        }
-
-        public Builder addInput(InputItem input) {
-            this.inputs.add(Objects.requireNonNull(input, "input"));
-            return this;
-        }
-
-        public Builder inputs(List<InputItem> inputs) {
-            this.inputs.clear();
-            if (inputs != null) {
-                this.inputs.addAll(inputs);
-            }
-            return this;
-        }
-
-        public Builder context(Context context) {
-            this.context = context;
-            return this;
-        }
-
-        public Builder routing(Routing routing) {
-            this.routing = routing;
-            return this;
-        }
-
-        public Builder metadata(Metadata metadata) {
-            this.metadata = metadata;
-            return this;
-        }
-
-        public WorkflowInput build() {
-            return new WorkflowInput(
-                    version,
-                    List.copyOf(inputs),
-                    context,
-                    routing,
-                    metadata
-            );
-        }
     }
 }

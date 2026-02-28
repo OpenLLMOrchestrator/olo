@@ -10,7 +10,7 @@ This document explains how the **olo-sdk** and the **Chat Backend (BE)** work to
 |-----------|------|
 | **Chat BE** | Spring Boot REST + SSE API. Owns sessions, messages, runs, execution events. **Only** service that uses olo-sdk and talks to Temporal. Builds workflow input and starts/signals workflows. |
 | **olo-sdk** | Java library that wraps the Temporal Java SDK. Provides **connection and lifecycle only**: target, namespace, workflow type, `WorkflowClient`, and `newChatWorkflowStub(WorkflowOptions)`. Does **not** define workflow semantics; those live in **olo-worker**. |
-| **olo-worker-input** | Library (used by BE and executor) that defines the **WorkflowInput** model (version 2.0): inputs, context, routing, metadata. BE **serializes** it when building the start payload; executor **deserializes** it in the workflow. |
+| **olo-worker-input** | Library (used by BE and executor) that defines the **WorkflowInput** model (version 1.0): inputs, context, routing, metadata. BE **serializes** it when building the start payload; executor **deserializes** it in the workflow. |
 | **olo-executor** | Separate process: runs the workflow and activities, calls back to BE via HTTP to append events. Not part of the backend. |
 
 **Flow:** Frontend → Chat BE → **olo-sdk** (start workflow with **WorkflowInput**) → Temporal → **olo-executor** (executes, callbacks to BE).
@@ -79,8 +79,8 @@ Task queue and callback URL are **not** part of the SDK; they are backend config
 4. **RunService.startWorkflow(runId, workflowInput, taskQueueFromFrontend)**:
    - Builds `WorkflowOptions` with `workflowId = "run-" + runId` and the effective task queue.
    - Gets a stub: `temporalClient.newChatWorkflowStub(options)`.
-   - Calls **`stub.start(workflowInput)`**. The argument is the **WorkflowInput object**; Temporal serializes it as a **JSON object** (not a string). The worker receives the same structure.
-5. Worker polls the same task queue, receives the workflow, and executes `execute(WorkflowInput workflowInput)`.
+   - Calls **`stub.start(workflowInput)`**. The argument is the **WorkflowInput object**; Temporal serializes it as a **JSON object** (not a string). The executor receives the same structure.
+5. Executor polls the same task queue, receives the workflow, and executes `execute(WorkflowInput workflowInput)`.
 
 ### 3.3 Signaling (Human Input)
 
@@ -93,7 +93,7 @@ No workflow type is needed for signaling; only the workflow id is used.
 
 ## 4. Workflow Input (Payload) – Who Builds What
 
-### 4.1 Format (version 2.0)
+### 4.1 Format (version 1.0)
 
 The payload is a **WorkflowInput** object (from **olo-worker-input**): `version`, `inputs`, `context`, `routing`, `metadata`.
 
@@ -109,9 +109,9 @@ See **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** for the full schema and example J
 
 ### 4.2 Backend: Building the Payload
 
-- **WorkflowInputSerializer** (in the backend) builds the **WorkflowInput** object using **olo-worker-input** types: `InputItem`, `Context`, `Routing`, `Metadata`, `Storage`, `WorkflowInput.builder()`.
-- The backend passes this **object** to `stub.start(workflowInput)`. It does **not** pass a JSON string; Temporal’s serialization produces the JSON that the worker receives.
-- So: **Backend = producer** of WorkflowInput; **Worker = consumer** that deserializes and reads inputs/context.
+- **WorkflowInputSerializer** (in the backend) builds the **WorkflowInput** object using **olo-worker-input** types: `InputItem`, `Context`, `Routing`, `Metadata`, `Storage`, and `WorkflowInput.builder()` (which returns `WorkflowInputBuilder`).
+- The backend passes this **object** to `stub.start(workflowInput)`. It does **not** pass a JSON string; Temporal’s serialization produces the JSON that the executor receives.
+- So: **Backend = producer** of WorkflowInput; **Executor = consumer** that deserializes and reads inputs/context.
 
 ### 4.3 Worker: Consuming the Payload
 
@@ -140,7 +140,7 @@ See **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** for the full schema and example J
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** – System overview and data flow.
 - **[DESIGN.md](DESIGN.md)** – Detailed design (boundaries, APIs, persistence).
-- **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** – WorkflowInput schema, example, and serialization.
-- **[DEMO.md](DEMO.md)** – How to build and run backend, worker, and exercise the flow.
+- **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** – WorkflowInput schema, example, builder (WorkflowInputBuilder), and serialization.
+- **[DEMO.md](DEMO.md)** – How to build and run backend, executor, and exercise the flow.
 - **olo-sdk/docs/ARCHITECTURE.md** – SDK architecture (TemporalClient, backend integration).
 - **olo-sdk/docs/DESIGN.md** – SDK goals, non-goals, and design notes.

@@ -1,4 +1,4 @@
-package com.olo.app.workflow;
+package com.olo.app.workflow.impl;
 
 import com.olo.input.model.Context;
 import com.olo.input.model.InputItem;
@@ -14,27 +14,18 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Builds and serializes {@link WorkflowInput} (olo-worker-input format) for the chat workflow.
- * Use this before starting the workflow so the worker receives the standard input format.
+ * Builds {@link WorkflowInput} (olo-worker-input format) for the chat workflow.
+ * Use this before starting the workflow so the executor receives the standard input format.
  */
 public final class WorkflowInputSerializer {
 
-    private static final String VERSION = "2.0";
+    private static final String VERSION = "1.0";
     private static final String USER_QUERY_INPUT_NAME = "userQuery";
     private static final String USER_QUERY_DISPLAY_NAME = "User query";
 
     /**
-     * Builds and returns the WorkflowInput object (JSON type).
+     * Builds and returns the WorkflowInput object.
      * Pass this to the workflow so Temporal serializes it as a JSON object, not as a string.
-     *
-     * @param tenantId        tenant id (required)
-     * @param sessionId       session id (optional, use "" if none)
-     * @param messageId       message id (optional, use "" if none)
-     * @param userMessage     user message content (e.g. "Search news about Tesla.")
-     * @param pipeline        task queue / pipeline name (e.g. "olo-chat")
-     * @param transactionId   transaction id (e.g. runId)
-     * @param runId           run id (included in context)
-     * @param callbackBaseUrl callback base URL (included in context)
      */
     public static WorkflowInput build(String tenantId,
                                      String sessionId,
@@ -80,5 +71,4 @@ public final class WorkflowInputSerializer {
                 .metadata(metadata)
                 .build();
     }
-
 }

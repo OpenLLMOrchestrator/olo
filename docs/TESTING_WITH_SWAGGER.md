@@ -184,4 +184,5 @@ Or with a message:
 ## Related docs
 
 - **[SDK_AND_BACKEND.md](SDK_AND_BACKEND.md)** — How the backend uses the SDK, WorkflowInput, task queue, and config.
-- **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** — Workflow payload format (version 2.0, inputs, context, routing).
+- **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** — Workflow payload format (version 1.0), WorkflowInputBuilder, inputs, context, routing.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — System overview and package layout (backend: domain, api.request/response, service.impl, workflow.impl; executor: workflow, activities, impl packages).

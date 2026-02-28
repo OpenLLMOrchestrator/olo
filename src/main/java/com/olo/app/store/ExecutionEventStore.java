@@ -1,6 +1,6 @@
 package com.olo.app.store;
 
-import com.olo.app.execution.OloExecutionEvent;
+import com.olo.app.domain.OloExecutionEvent;
 
 import java.util.ArrayList;
 import java.util.List;

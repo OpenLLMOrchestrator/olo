@@ -45,13 +45,13 @@ Client and executor must use the **same Temporal namespace**. Typically both use
 
 ## 4. Input Format: WorkflowInput (JSON)
 
-The workflow expects a **single JSON payload** in **WorkflowInput version 2.0** format. The client serializes this payload and passes it as the workflow input when starting the workflow.
+The workflow expects a **single JSON payload** in **WorkflowInput version 1.0** format. The client serializes this payload and passes it as the workflow input when starting the workflow.
 
 ### 4.1 Example payload
 
 ```json
 {
-  "version": "2.0",
+  "version": "1.0",
   "inputs": [
     {
       "name": "userQuery",
@@ -88,7 +88,7 @@ The workflow expects a **single JSON payload** in **WorkflowInput version 2.0** 
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| **version** | string | Yes | Schema version; use `"2.0"`. |
+| **version** | string | Yes | Schema version; use `"1.0"`. |
 | **inputs** | array | Yes | List of named input items (see below). |
 | **context** | object | Yes | Tenant, session, roles, permissions (see below). |
 | **routing** | object | Yes | Pipeline (task queue), transaction type, transaction ID (see below). |
@@ -133,7 +133,7 @@ For chat, the user message is typically an input with `name` `"userQuery"` (or s
 
 ### 4.7 What is required in the input
 
-- **version** – Must be `"2.0"`.
+- **version** – Must be `"1.0"`.
 - **inputs** – At least one input; for chat, include the user message (e.g. name `userQuery`, type `STRING`, storage `LOCAL`, value = message text).
 - **context** – Must include **tenantId** and **sessionId**; other fields as needed.
 - **routing** – Must include **pipeline** (task queue name) and **transactionId** (run/workflow identifier).
@@ -150,7 +150,7 @@ Workflow input is a **single string** containing the WorkflowInput JSON:
 ```
 workflow input (single argument): String = JSON serialization of:
 {
-  "version": "2.0",
+  "version": "1.0",
   "inputs": [ { "name", "displayName", "type", "storage", "value"? } ],
   "context": { "tenantId", "groupId"? , "roles"? , "permissions"? , "sessionId" },
   "routing": { "pipeline", "transactionType"? , "transactionId" },
@@ -220,7 +220,7 @@ stub.signal("humanInput", approved, message != null ? message : "");
 1. **Workflow type** – Client starts a workflow with type **`OloChatWorkflow`** (handled by SDK).
 2. **Task queue** – Use **`routing.pipeline`** as the task queue when starting the workflow. The executor must be started with the same task queue (e.g. `OLO_TASK_QUEUE=olo-chat-queue-oolama-debug` or match your pipeline value).
 3. **Namespace** – Same on both sides (e.g. **`default`**). Worker: `OLO_TEMPORAL_NAMESPACE`; Backend: `olo.temporal.namespace`.
-4. **Input** – Single **WorkflowInput 2.0 JSON string**: `version`, `inputs` (e.g. `userQuery` for the message), `context` (tenantId, sessionId), `routing` (pipeline, transactionId), and optional `metadata`.
+4. **Input** – Single **WorkflowInput 1.0 JSON**: `version`, `inputs` (e.g. `userQuery` for the message), `context` (tenantId, sessionId), `routing` (pipeline, transactionId), and optional `metadata`.
 5. **Workflow ID** – Use **`run-` + routing.transactionId** (or equivalent run ID) so signals and queries can find the run.
 6. **Callback URL** – If the workflow reports events to a backend, that URL must be reachable by the executor (e.g. from config or from input).
 7. **Temporal server** – Worker and client must point at the same Temporal server (e.g. `localhost:7233`). Backend uses `olo.temporal.target`.
@@ -230,9 +230,10 @@ stub.signal("humanInput", approved, message != null ? message : "");
 ## 9. References
 
 - **Executor:** `OloExecutorMain.java` – task queue, namespace, workflow/activity registration.
-- **Workflow interface:** `OloChatWorkflow.java` – `execute(...)` and `humanInput(...)`.
-- **Workflow implementation:** `OloChatWorkflowImpl.java` – execution and signal handling.
-- **Client start:** `RunService.java` – `startWorkflow(...)`, `signalHumanInput(...)`.
+- **Workflow interface:** `com.olo.worker.workflow.OloChatWorkflow` – `execute(...)` and `humanInput(...)`.
+- **Workflow implementation:** `com.olo.worker.workflow.impl.OloChatWorkflowImpl` – execution and signal handling.
+- **Activities interface:** `com.olo.worker.activities.OloChatActivities`; **impl:** `com.olo.worker.activities.impl.OloChatActivitiesImpl`.
+- **Client start:** Backend `RunService` (interface) / `RunServiceImpl` (in `service.impl`) – `startWorkflow(...)`, `signalHumanInput(...)`.
 - **SDK:** `TemporalClient.java` – workflow type name, `newChatWorkflowStub(...)`.
 - **Config:** `DemoConfig.java` – `olo.temporal.task-queue`, `olo.temporal.namespace`, `olo.chat.callback-base-url`.
-- **Input model:** `olo-worker-input` – `WorkflowInput`, `WorkflowInput.fromJson()`, `WorkflowInputValues`; see **docs/WORKFLOW_INPUT.md**.
+- **Input model:** `olo-worker-input` – `WorkflowInput`, `WorkflowInput.builder()` (returns `WorkflowInputBuilder`), `WorkflowInput.fromJson()`, `WorkflowInputValues`; see **docs/WORKFLOW_INPUT.md**.

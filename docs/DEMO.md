@@ -54,7 +54,7 @@ docker run -d -p 7233:7233 temporalio/auto-setup
 
 Backend will be at **http://localhost:7080**.
 
-- **Task queue**: Comes from the frontend (request body `taskQueue`). If omitted, backend uses `olo.temporal.task-queue` (default `olo-chat`). Worker must use the same task queue (e.g. env `OLO_TASK_QUEUE`).
+- **Task queue**: Comes from the frontend (request body `taskQueue`). If omitted, backend uses `olo.temporal.task-queue` (default `olo-chat`). Executor must use the same task queue (e.g. env `OLO_TASK_QUEUE`).
 - **Workflow type**: Default is **`OloKernelWorkflow`**. Override with env **`OLO_WORKFLOW_TYPE`**. The worker must register the workflow under the same type name.
 - **Swagger UI** (all chat APIs): **http://localhost:7080/swagger-ui.html**
 - **OpenAPI JSON**: http://localhost:7080/v3/api-docs

@@ -1,15 +1,15 @@
 package com.olo.app.controller;
 
-import com.olo.app.api.CreateSessionRequest;
-import com.olo.app.api.CreateSessionResponse;
-import com.olo.app.api.SendMessageRequest;
-import com.olo.app.api.SendMessageResponse;
-import com.olo.app.execution.NodeStatus;
-import com.olo.app.execution.NodeType;
-import com.olo.app.execution.OloExecutionEvent;
+import com.olo.app.api.request.CreateSessionRequest;
+import com.olo.app.api.request.SendMessageRequest;
+import com.olo.app.api.response.CreateSessionResponse;
+import com.olo.app.api.response.SendMessageResponse;
+import com.olo.app.domain.NodeStatus;
+import com.olo.app.domain.NodeType;
+import com.olo.app.domain.OloExecutionEvent;
 import com.olo.app.service.RunService;
 import com.olo.app.store.*;
-import com.olo.app.workflow.WorkflowInputSerializer;
+import com.olo.app.workflow.impl.WorkflowInputSerializer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
