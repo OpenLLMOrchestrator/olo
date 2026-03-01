@@ -12,7 +12,7 @@ For a single reference of **example request/response payloads for all APIs**, se
 
 1. Start the backend (e.g. `start.bat` or `./gradlew bootRun`).
 2. In your browser go to: **http://localhost:7080/swagger-ui.html**
-3. You’ll see the API grouped by **Sessions** and **Runs**.
+3. You’ll see the API grouped by **Tenants**, **Tenant queues**, **Sessions**, and **Runs**. Use **GET /api/tenants** to get the default tenant id for session/message requests.
 
 ---
 

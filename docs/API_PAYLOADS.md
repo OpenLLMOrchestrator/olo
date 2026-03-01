@@ -4,6 +4,54 @@ Simple request/response examples in one place. Use these in Swagger, curl, or te
 
 ---
 
+## Tenants and queues
+
+### GET /api/tenants
+
+No request body. Used by the UI to populate the tenant dropdown.
+
+**Response (200)** — list of tenants (default from config, then Redis-discovered when Redis is available). If Redis is unavailable, returns at least the default tenant; no 500.
+
+```json
+[
+  { "id": "2a2a91fb-f5b4-4cf0-b917-524d242b2e3d", "name": "Default" }
+]
+```
+
+Default tenant id comes from `olo.default-tenant-id` (e.g. `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`). Additional tenant ids can come from `olo.tenant-ids` (config) and from Redis keys matching `*:olo:kernel:config:*`.
+
+---
+
+### GET /api/tenants/{tenantId}/queues
+
+No request body. **Path:** `tenantId`. Returns queue names for Redis keys `<tenantId>:olo:kernel:config:*`. Shown under Chat and RAG in the UI.
+
+**Response (200)** — array of queue name strings. Empty if Redis is unavailable or no keys for this tenant.
+
+```json
+[
+  "olo-chat-queue-oolama:1.0",
+  "olo-rag-queue-oolama:1.0"
+]
+```
+
+---
+
+### GET /api/tenants/{tenantId}/queues/{queueName}/config
+
+No request body. **Path:** `tenantId`, `queueName`. Returns the JSON value stored at Redis key `<tenantId>:olo:kernel:config:<queueName>`. Used for the Conversation pipeline dropdown (e.g. `pipelines` array).
+
+**Response (200)** — JSON object (queue config). Empty object if key missing or Redis unavailable.
+
+```json
+{
+  "pipelines": ["default", "rag"],
+  "model": "gpt-4"
+}
+```
+
+---
+
 ## Sessions
 
 ### POST /api/sessions

@@ -501,12 +501,20 @@ Store **workflowVersion**, **modelVersion**, **plannerVersion** on the run (e.g.
 
 - **POST /api/runs** – Create run without session/message (e.g. `CreateRunRequest`: tenantId, input.type, input.message). Validates, creates initial event, starts workflow, returns runId. Use when session/message model is not yet implemented or for backward compatibility.
 
-### 10.2 Chat BE — Additional (Planned)
+### 10.2 Chat BE — Tenants and queues (implemented)
+
+- **GET /api/tenants** – List tenants for UI dropdown. Returns default tenant (from `olo.default-tenant-id`) and optionally config/Redis-discovered ids. If Redis is unavailable, returns at least default; no 500.
+- **GET /api/tenants/{tenantId}/queues** – List queue names for keys `<tenantId>:olo:kernel:config:*` in Redis. Used by olo-chat under Chat/RAG. Returns [] when Redis unavailable.
+- **GET /api/tenants/{tenantId}/queues/{queueName}/config** – Queue config JSON from Redis (e.g. `pipelines` for Conversation pipeline dropdown). Returns {} when key missing or Redis unavailable.
+
+See [API_PAYLOADS.md](API_PAYLOADS.md) for request/response examples. Redis is optional; KernelConfigQueueService is optional bean.
+
+### 10.3 Chat BE — Additional (Planned)
 
 - **GET /api/sessions/{sessionId}/messages** – List messages in session.
 - Idempotency (e.g. idempotency key) for message or run creation can be added later.
 
-### 10.3 Admin BE (olo-ui-be) — Inspection, Replay, Diff (Planned)
+### 10.4 Admin BE (olo-ui-be) — Inspection, Replay, Diff (Planned)
 
 - **GET /api/admin/runs** (or similar) – List runs (filter by tenant, time range, etc.); read from shared store.
 - **GET /api/admin/runs/{runId}** – Run details and full event list; read from shared store.
@@ -515,7 +523,7 @@ Store **workflowVersion**, **modelVersion**, **plannerVersion** on the run (e.g.
 
 All Admin BE endpoints are read-only on the shared execution data store; no Temporal.
 
-### 10.4 Conventions
+### 10.5 Conventions
 
 - REST only; no raw Temporal types in request/response.
 - Errors: problem-details style JSON with correlation ID where possible.

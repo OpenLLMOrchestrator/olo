@@ -30,7 +30,9 @@ Olo provides a **chat flow** with planner, optional tool calls, model, and optio
                     │  • Sessions     │
                     │  • Messages     │
                     │  • Runs         │
-                    │  • SSE events   │
+                    │  • SSE / WS     │
+                    │  • Tenants      │
+                    │  • Queues       │
                     │  • Human input  │
                     └────────┬────────┘
                              │
@@ -70,12 +72,13 @@ Olo provides a **chat flow** with planner, optional tool calls, model, and optio
 
 | Component      | Role |
 |----------------|------|
-| **olo-chat**   | Frontend; calls Chat BE REST APIs, consumes SSE for live execution events. |
-| **Chat BE**    | REST + SSE API; sessions, messages, runs; starts/signals workflows via **olo-sdk**; writes execution events; streams events to UI; accepts human input and signals workflow. |
+| **olo-chat**   | Frontend; calls Chat BE REST APIs; consumes SSE and optional WebSocket for run events and liveness; tenant dropdown (GET /api/tenants); queues under Chat/RAG; queue config for pipeline dropdown. |
+| **Chat BE**    | REST + SSE + WebSocket API; sessions, messages, runs; **tenants** (GET /api/tenants — default tenant from config, optional Redis-discovered); **queues** (GET /api/tenants/{id}/queues, GET .../queues/{name}/config from Redis keys `<tenantId>:olo:kernel:config:*`); starts/signals workflows via **olo-sdk**; writes execution events; streams events to UI; accepts human input and signals workflow. When Redis is unavailable, tenant and queue APIs return safe defaults (no 500). |
 | **olo-sdk**    | Java library wrapping Temporal SDK; `TemporalClient` owns connection and `WorkflowClient`; used only by Chat BE. |
 | **Temporal**   | Durable workflow execution; task queues; only Chat BE (via olo-sdk) connects. |
 | **Olo Executor** | Separate process: polls Temporal task queue; runs `OloChatWorkflow` and activities (planner, tool, model, human); reports events to Chat BE via HTTP. Not part of the backend. |
 | **Chat DB**    | Phase 1: sessions, messages, runs, execution event log. Single writer (Chat BE). Later becomes shared store when Admin BE is added. |
+| **Redis** (optional) | Kernel config: keys `<tenantId>:olo:kernel:config:<queueName>` hold queue config JSON. Used by **KernelConfigQueueService** to list queues and return queue config (e.g. pipelines). If Redis is disabled or failing, GET /api/tenants still returns the default tenant; GET .../queues returns []. No 500. |
 
 ---
 
@@ -114,10 +117,10 @@ All execution visibility (planner, tool, model, human) is through **OloExecution
 
 - **api.request** / **api.response** — DTOs for REST (e.g. CreateRunRequest, CreateRunResponse).
 - **config** — Spring configuration (DemoConfig, WebConfig, etc.).
-- **controller** — REST controllers (RunsController, SessionsController, HealthController).
+- **controller** — REST controllers (RunsController, SessionsController, HealthController, TenantsController, TenantQueuesController).
 - **domain** — Execution model (NodeType, NodeStatus, OloExecutionEvent).
 - **filter** — Request logging filter.
-- **service** — RunService interface.
+- **service** — RunService interface; KernelConfigQueueService (queue names and queue config from Redis; optional bean).
 - **service.impl** — RunServiceImpl (workflow start, signal, append event).
 - **store** — In-memory stores (ChatRunStore, ExecutionEventStore, etc.).
 - **workflow.impl** — WorkflowInputSerializer (builds WorkflowInput for the executor).

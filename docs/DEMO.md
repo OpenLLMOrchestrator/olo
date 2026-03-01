@@ -56,8 +56,9 @@ Backend will be at **http://localhost:7080**.
 
 - **Task queue**: Comes from the frontend (request body `taskQueue`). If omitted, backend uses `olo.temporal.task-queue` (default `olo-chat`). Executor must use the same task queue (e.g. env `OLO_TASK_QUEUE`).
 - **Workflow type**: Default is **`OloKernelWorkflow`**. Override with env **`OLO_WORKFLOW_TYPE`**. The worker must register the workflow under the same type name.
-- **Swagger UI** (all chat APIs): **http://localhost:7080/swagger-ui.html**
+- **Swagger UI** (all chat APIs, including tenants and queues): **http://localhost:7080/swagger-ui.html**
 - **OpenAPI JSON**: http://localhost:7080/v3/api-docs
+- **Tenants / queues**: GET /api/tenants returns the default tenant (and optionally Redis-discovered tenants). GET /api/tenants/{tenantId}/queues and GET .../queues/{queueName}/config require Redis (keys `<tenantId>:olo:kernel:config:*`). If Redis is not configured, those endpoints return [] or {}; no 500.
 - All requests to `/api/*` are logged (method, URI, and body for POST/PUT/PATCH).
 
 ---
