@@ -5,35 +5,40 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * Registers WebSocket sessions per runId. Used by the WebSocket handler (SUBSCRIBE_RUN)
  * and by the broadcaster to push events to subscribed sessions.
+ * One session may subscribe to multiple runs; on close we remove the session from all runs.
  */
 public class RunEventWebSocketRegistry {
 
     /** runId -> list of sessions subscribed to that run */
     private final ConcurrentHashMap<String, List<WebSocketSession>> sessionsByRunId = new ConcurrentHashMap<>();
 
-    /** session id -> runId (for cleanup on close) */
-    private final ConcurrentHashMap<String, String> runIdBySessionId = new ConcurrentHashMap<>();
+    /** session id -> set of runIds (for cleanup on close when one connection subscribes to multiple runs) */
+    private final ConcurrentHashMap<String, Set<String>> runIdsBySessionId = new ConcurrentHashMap<>();
 
     public void subscribe(String runId, WebSocketSession session) {
         if (runId == null || runId.isBlank() || session == null || !session.isOpen()) return;
         sessionsByRunId.computeIfAbsent(runId, k -> new CopyOnWriteArrayList<>()).add(session);
-        runIdBySessionId.put(session.getId(), runId);
+        runIdsBySessionId.computeIfAbsent(session.getId(), k -> new CopyOnWriteArraySet<>()).add(runId);
     }
 
     public void unsubscribe(WebSocketSession session) {
         if (session == null) return;
-        String runId = runIdBySessionId.remove(session.getId());
-        if (runId != null) {
-            List<WebSocketSession> list = sessionsByRunId.get(runId);
-            if (list != null) {
-                list.remove(session);
-                if (list.isEmpty()) sessionsByRunId.remove(runId);
+        Set<String> runIds = runIdsBySessionId.remove(session.getId());
+        if (runIds != null) {
+            for (String runId : runIds) {
+                List<WebSocketSession> list = sessionsByRunId.get(runId);
+                if (list != null) {
+                    list.remove(session);
+                    if (list.isEmpty()) sessionsByRunId.remove(runId);
+                }
             }
         }
     }

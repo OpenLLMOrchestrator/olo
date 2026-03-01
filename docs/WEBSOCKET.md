@@ -21,8 +21,10 @@ When JWT is **required** (`olo.ws.jwt.required=true`): the client must send a va
 
 When JWT is **not required** (`olo.ws.jwt.required=false`, default for local/Swagger testing): the client may connect without `Authorization`. The backend assigns the session the **default tenant** (`olo.ws.default-tenant` = `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`), which is always available. Use this tenantId when creating sessions/runs in Swagger so you can subscribe over WebSocket without a token.
 
-- **Client:** optionally send HTTP header: `Authorization: Bearer <JWT>` when opening the connection to `/ws`. If sent, backend uses the token’s tenantId; otherwise (when bypass enabled) uses default tenant.
-- **Backend:** validates the token when present, extracts `tenantId` (e.g. from `tenantId` or `sub` claim), and stores it in the WebSocket session context. When JWT is required and missing/invalid, handshake is **rejected** (401).
+- **Client:** send a valid JWT when required. The backend accepts the token in either form:
+  - **Header:** `Authorization: Bearer <JWT>` (preferred when the client can set headers).
+  - **Query param:** `?accessToken=<JWT>` or `?token=<JWT>` (for browser clients; the `WebSocket` API cannot set custom headers). The value is URL-decoded.
+- If a token is sent, the backend validates it, extracts `tenantId` (from `tenantId` or `sub` claim), and stores it in the WebSocket session. When JWT is required and missing/invalid, handshake is **rejected** (401). When JWT is not required, missing/invalid token causes the backend to assign the **default tenant**.
 
 Demo/development: the default implementation **decodes** the JWT payload only (no signature verification). Production should set `olo.ws.jwt.required=true` and use proper JWT verification.
 
@@ -235,11 +237,12 @@ Or **POST /api/sessions** then **POST /api/sessions/{sessionId}/messages** → r
 
 The handshake requires `Authorization: Bearer <JWT>`. The JWT payload should include a tenant identifier (e.g. `tenantId` or `sub`). For local testing you can use a small JWT that decodes to `{"tenantId":"2a2a91fb-f5b4-4cf0-b917-524d242b2e3d"}` (or use your auth provider’s token).
 
-**Note:** The browser `WebSocket` API does not allow custom headers. For in-browser testing you would need the backend to accept the token via query param or cookie; otherwise use a client that can set headers (e.g. **websocat**, Postman, or a small Node script).
+**Browser:** The `WebSocket` API cannot set custom headers. Use the query param: `ws://localhost:7080/ws?accessToken=YOUR_JWT` (or `?token=YOUR_JWT`). For local testing with JWT not required, you can use `ws://localhost:7080/ws` without a token (backend assigns the default tenant).
 
-Open DevTools → Console (if your backend accepts token another way, e.g. query):
+Open DevTools → Console:
 
 ```javascript
+// With token (required in production): ws://localhost:7080/ws?accessToken=YOUR_JWT
 const ws = new WebSocket('ws://localhost:7080/ws');
 ws.onopen = () => {
   ws.send(JSON.stringify({ type: 'SUBSCRIBE_RUN', runId: 'YOUR_RUN_ID' }));

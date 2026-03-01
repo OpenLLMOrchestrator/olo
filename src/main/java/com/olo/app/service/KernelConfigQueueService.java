@@ -3,6 +3,7 @@ package com.olo.app.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,8 @@ import java.util.stream.Collectors;
 
 /**
  * Reads kernel config queue names from Redis.
- * Key pattern: <tenantId>:olo:kernel:config:<queueName>
+ * Key pattern matches olo-worker-configuration: <tenantId>:olo:kernel:config:<queueName>
+ * (e.g. 2a2a91fb-f5b4-4cf0-b917-524d242b2e3d:olo:kernel:config:olo-chat-queue-oolama:1.0).
  * Requires Redis: do not exclude Redis autoconfig; ensure Redis is running on spring.data.redis.host/port.
  */
 @Service
@@ -26,11 +28,18 @@ public class KernelConfigQueueService {
     private static final Logger log = LoggerFactory.getLogger(KernelConfigQueueService.class);
     private static final String SUFFIX = ":olo:kernel:config:";
     private static final String SCAN_PATTERN = "*" + SUFFIX + "*";
+    private static final String FALLBACK_DEFAULT_TENANT_ID = "2a2a91fb-f5b4-4cf0-b917-524d242b2e3d";
 
     private final StringRedisTemplate redisTemplate;
+    private final String defaultTenantId;
 
-    public KernelConfigQueueService(@Autowired(required = false) StringRedisTemplate redisTemplate) {
+    public KernelConfigQueueService(
+            @Autowired(required = false) StringRedisTemplate redisTemplate,
+            @Value("${olo.default-tenant-id:}") String defaultTenantId) {
         this.redisTemplate = redisTemplate;
+        this.defaultTenantId = (defaultTenantId != null && !defaultTenantId.isBlank())
+                ? defaultTenantId.trim()
+                : FALLBACK_DEFAULT_TENANT_ID;
         if (redisTemplate == null) {
             log.warn("KernelConfigQueueService: Redis not available (StringRedisTemplate is null). Ensure Redis is running and spring.autoconfigure.exclude does NOT contain RedisAutoConfiguration.");
         }
@@ -38,21 +47,20 @@ public class KernelConfigQueueService {
 
     /**
      * Returns queue names for keys matching <tenantId>:olo:kernel:config:<queueName>.
+     * Uses normalized tenant id (e.g. "default" → default tenant UUID) so keys match olo-worker-configuration.
      */
     public List<String> getQueueNames(String tenantId) {
-        if (tenantId == null || tenantId.isBlank()) {
-            return Collections.emptyList();
-        }
         if (redisTemplate == null) {
             log.debug("getQueueNames: Redis not available, returning empty list for tenantId={}", tenantId);
             return Collections.emptyList();
         }
+        String normalizedTenant = normalizeTenantIdForConfig(tenantId);
         Set<String> queueNames = new LinkedHashSet<>();
-        String tenantPrefix = tenantId + SUFFIX;
+        String tenantPrefix = normalizedTenant + SUFFIX;
         try {
             Set<String> keys = keysViaExecute(SCAN_PATTERN);
             if (log.isDebugEnabled()) {
-                log.debug("getQueueNames tenantId={} keysFound={} sample={}", tenantId, keys.size(), keys.isEmpty() ? null : keys.iterator().next());
+                log.debug("getQueueNames tenantId={} normalizedTenant={} keysFound={} sample={}", tenantId, normalizedTenant, keys.size(), keys.isEmpty() ? null : keys.iterator().next());
             }
             for (String k : keys) {
                 if (k != null && k.startsWith(tenantPrefix)) {
@@ -60,7 +68,7 @@ public class KernelConfigQueueService {
                     if (!name.isEmpty()) queueNames.add(name);
                 }
             }
-            if (queueNames.isEmpty() && "default".equalsIgnoreCase(tenantId.trim())) {
+            if (queueNames.isEmpty()) {
                 String legacyPrefix = "olo:kernel:config:";
                 for (String k : keys) {
                     if (k != null && k.startsWith(legacyPrefix)) {
@@ -103,15 +111,31 @@ public class KernelConfigQueueService {
     }
 
     /**
+     * Normalizes tenant id for Redis key so it matches olo-worker-configuration (e.g. "default" → default tenant UUID).
+     */
+    public String normalizeTenantIdForConfig(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return defaultTenantId;
+        }
+        String t = tenantId.trim();
+        if ("default".equalsIgnoreCase(t)) {
+            return defaultTenantId;
+        }
+        return t;
+    }
+
+    /**
      * Returns the queue configuration JSON for key <tenantId>:olo:kernel:config:<queueName>.
+     * Uses normalized tenant id (e.g. "default" → olo.default-tenant-id) so key matches olo-worker-configuration.
      * Value is expected to be JSON (e.g. contains "pipelines" array). Returns null if key missing or Redis unavailable.
      */
     public String getQueueConfig(String tenantId, String queueName) {
-        if (redisTemplate == null || tenantId == null || tenantId.isBlank() || queueName == null || queueName.isBlank()) {
+        if (redisTemplate == null || queueName == null || queueName.isBlank()) {
             return null;
         }
+        String normalizedTenant = normalizeTenantIdForConfig(tenantId);
         try {
-            String key = tenantId + SUFFIX + queueName;
+            String key = normalizedTenant + SUFFIX + queueName;
             return redisTemplate.opsForValue().get(key);
         } catch (Exception e) {
             log.debug("getQueueConfig failed for tenantId={} queueName={}", tenantId, queueName, e);

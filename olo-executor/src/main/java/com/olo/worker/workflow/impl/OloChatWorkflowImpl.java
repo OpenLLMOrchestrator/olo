@@ -26,8 +26,8 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
             ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(30)).build());
 
     @Override
-    public void execute(WorkflowInput input) {
-        if (input == null) return;
+    public String execute(WorkflowInput input) {
+        if (input == null) return "";
         String runId = input.getContext() != null ? input.getContext().getRunId() : "";
         String callbackBaseUrl = input.getContext() != null ? input.getContext().getCallbackBaseUrl() : "";
         String correlationId = input.getContext() != null ? input.getContext().getCorrelationId() : null;
@@ -42,6 +42,7 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
 
         List<String> stepsDone = new ArrayList<>();
         String contextForModel = null;
+        String lastModelResponse = "";
 
         while (true) {
             String next = activities.planner(userMessage, String.join(",", stepsDone));
@@ -62,9 +63,10 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
 
                 case "MODEL":
                     String modelResponse = activities.runModel(userMessage, contextForModel);
+                    lastModelResponse = modelResponse != null ? modelResponse : "";
                     activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_COMPLETED", correlationId, "model-1", "planner-" + stepsDone.size(), "MODEL", "COMPLETED",
                             Map.of("context", contextForModel != null ? contextForModel : ""),
-                            Map.of("response", modelResponse), null);
+                            Map.of("response", lastModelResponse), null);
                     stepsDone.add("MODEL");
                     contextForModel = null;
                     break;
@@ -82,8 +84,8 @@ public class OloChatWorkflowImpl implements OloChatWorkflow {
                 case "DONE":
                 default:
                     activities.reportEvent(runId, callbackBaseUrl, seq++, "NODE_COMPLETED", correlationId, "root", null, "SYSTEM", "COMPLETED",
-                            null, Map.of("steps", stepsDone), null);
-                    return;
+                            null, Map.of("steps", stepsDone, "response", lastModelResponse), null);
+                    return lastModelResponse;
             }
         }
     }

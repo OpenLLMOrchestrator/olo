@@ -78,19 +78,26 @@ public class RunEventWebSocketHandler extends TextWebSocketHandler {
         if (SUBSCRIBE_RUN.equals(type)) {
             String runId = map.get("runId") != null ? map.get("runId").toString() : null;
             if (runId == null || runId.isBlank()) {
+                log.info("[WS] SUBSCRIBE_RUN rejected: missing runId");
                 sendError(session, CODE_MISSING_RUN_ID, "SUBSCRIBE_RUN requires runId");
                 return;
             }
             ChatRunStore.RunRecord run = runStore.get(runId);
             if (run == null) {
+                log.info("[WS] SUBSCRIBE_RUN rejected: run not found runId={}", runId);
                 sendError(session, CODE_NOT_FOUND, "Run not found: " + runId);
                 return;
             }
             String sessionTenantId = (String) session.getAttributes().get(WebSocketAuthHandshakeHandler.ATTR_TENANT_ID);
-            if (sessionTenantId != null && run.tenantId != null && !sessionTenantId.equals(run.tenantId)) {
+            boolean tenantOk = run.tenantId == null || run.tenantId.isBlank()
+                    || sessionTenantId == null || sessionTenantId.equals(run.tenantId);
+            if (!tenantOk) {
+                log.warn("[WS] SUBSCRIBE_RUN rejected: tenant mismatch runId={} runTenant={} sessionTenant={}",
+                        runId, run.tenantId, sessionTenantId);
                 sendError(session, CODE_FORBIDDEN, "Tenant mismatch: cannot subscribe to this run");
                 return;
             }
+            log.info("[WS] SUBSCRIBE_RUN ok runId={} sessionTenant={} runTenant={}", runId, sessionTenantId, run.tenantId);
             registry.subscribe(runId, session);
             sendCatchUp(session, runId);
         } else if (PING.equals(type)) {

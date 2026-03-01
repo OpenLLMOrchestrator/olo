@@ -28,4 +28,7 @@ public interface RunService {
     ExecutionEventStore getEventStore();
 
     ChatRunStore getRunStore();
+
+    /** Current assistant response for the run from event store (last MODEL or SYSTEM COMPLETED with output). */
+    String getRunResponse(String runId);
 }

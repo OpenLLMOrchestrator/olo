@@ -46,4 +46,15 @@ public class ChatMessageStore {
         if (ids == null) return List.of();
         return ids.stream().map(byId::get).filter(m -> m != null).toList();
     }
+
+    /** Remove all messages for the given session ids (e.g. when deleting all sessions for a tenant). */
+    public void removeBySessionIds(java.util.Collection<String> sessionIds) {
+        if (sessionIds == null) return;
+        for (String sessionId : sessionIds) {
+            List<String> ids = bySession.remove(sessionId);
+            if (ids != null) {
+                for (String id : ids) byId.remove(id);
+            }
+        }
+    }
 }

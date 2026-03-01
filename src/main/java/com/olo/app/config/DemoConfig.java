@@ -13,6 +13,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
 @Configuration
 public class DemoConfig {
 
@@ -28,7 +31,7 @@ public class DemoConfig {
     @Value("${olo.temporal.task-queue:olo-chat}")
     private String taskQueue;
 
-    @Value("${olo.temporal.workflow-type:OloKernelWorkflow}")
+    @Value("${olo.temporal.workflow-type:OloChatWorkflowImpl}")
     private String workflowTypeDefault;
 
     @Bean
@@ -104,5 +107,15 @@ public class DemoConfig {
     @Bean(name = "oloTaskQueue")
     public String taskQueue() {
         return taskQueue;
+    }
+
+    /** Executor for awaiting Temporal workflow completion (non-blocking). */
+    @Bean(name = "workflowCompletionExecutor")
+    public Executor workflowCompletionExecutor() {
+        return Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "workflow-completion");
+            t.setDaemon(true);
+            return t;
+        });
     }
 }

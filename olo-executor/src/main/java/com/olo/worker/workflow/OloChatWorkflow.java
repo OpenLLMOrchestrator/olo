@@ -10,7 +10,7 @@ import io.temporal.workflow.WorkflowMethod;
 public interface OloChatWorkflow {
 
     @WorkflowMethod
-    void execute(com.olo.input.model.WorkflowInput workflowInput);
+    String execute(com.olo.input.model.WorkflowInput workflowInput);
 
     @SignalMethod
     void humanInput(boolean approved, String message);
