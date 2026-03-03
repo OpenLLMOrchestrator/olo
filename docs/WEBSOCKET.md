@@ -19,7 +19,7 @@ Default port is **7080** (see `server.port` in `application.properties`).
 
 When JWT is **required** (`olo.ws.jwt.required=true`): the client must send a valid JWT; missing/invalid token → 401.
 
-When JWT is **not required** (`olo.ws.jwt.required=false`, default for local/Swagger testing): the client may connect without `Authorization`. The backend assigns the session the **default tenant** (`olo.ws.default-tenant` = `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`), which is always available. Use this tenantId when creating sessions/runs in Swagger so you can subscribe over WebSocket without a token.
+When JWT is **not required** (`olo.ws.jwt.required=false`, default for local/Swagger testing): the client may connect without `Authorization`. The backend assigns the session the **default tenant** (`OLO_DEFAULT_TENANT_ID` / `olo.default-tenant-id`, e.g. `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`), which is always available. Use this tenantId when creating sessions/runs in Swagger so you can subscribe over WebSocket without a token.
 
 - **Client:** send a valid JWT when required. The backend accepts the token in either form:
   - **Header:** `Authorization: Bearer <JWT>` (preferred when the client can set headers).

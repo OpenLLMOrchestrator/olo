@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * Reads kernel config queue names from Redis.
  * Key pattern matches olo-worker-configuration: <tenantId>:olo:kernel:config:<queueName>
  * (e.g. 2a2a91fb-f5b4-4cf0-b917-524d242b2e3d:olo:kernel:config:olo-chat-queue-oolama:1.0).
- * Requires Redis: do not exclude Redis autoconfig; ensure Redis is running on spring.data.redis.host/port.
+ * Requires Redis: do not exclude Redis autoconfig; ensure Redis is running (olo.cache.host/port, mapped to spring.data.redis).
  */
 @Service
 public class KernelConfigQueueService {

@@ -67,8 +67,8 @@ public class DemoConfig {
     @Bean
     public WebSocketAuthHandshakeHandler webSocketAuthHandshakeHandler(JwtTenantExtractor jwtTenantExtractor,
                                                                        @Value("${olo.ws.jwt.required:true}") boolean wsJwtRequired,
-                                                                       @Value("${olo.ws.default-tenant:2a2a91fb-f5b4-4cf0-b917-524d242b2e3d}") String wsDefaultTenant) {
-        return new WebSocketAuthHandshakeHandler(new DefaultHandshakeHandler(), jwtTenantExtractor, wsJwtRequired, wsDefaultTenant);
+                                                                       @Value("${olo.default-tenant-id:2a2a91fb-f5b4-4cf0-b917-524d242b2e3d}") String defaultTenantId) {
+        return new WebSocketAuthHandshakeHandler(new DefaultHandshakeHandler(), jwtTenantExtractor, wsJwtRequired, defaultTenantId);
     }
 
     @Bean

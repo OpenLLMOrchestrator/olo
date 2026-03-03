@@ -4,7 +4,7 @@ Use Swagger UI to exercise the Olo chat backend APIs from your browser. The back
 
 For a single reference of **example request/response payloads for all APIs**, see [API_PAYLOADS.md](API_PAYLOADS.md).
 
-**Authentication:** For the time being, **no JWT or auth is required** for the REST API used by Swagger. WebSocket handshake can also run without a token when `olo.ws.jwt.required=false` (default): the session is assigned the **default tenant** (`olo.ws.default-tenant` = `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`), which is always available. Use this tenantId when creating sessions/runs in Swagger so you can subscribe to run events over WebSocket without supplying a Bearer token.
+**Authentication:** For the time being, **no JWT or auth is required** for the REST API used by Swagger. WebSocket handshake can also run without a token when `olo.ws.jwt.required=false` (default): the session is assigned the **default tenant** (`OLO_DEFAULT_TENANT_ID` / `olo.default-tenant-id` = `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`), which is always available. Use this tenantId when creating sessions/runs in Swagger so you can subscribe to run events over WebSocket without supplying a Bearer token.
 
 ---
 

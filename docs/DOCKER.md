@@ -4,8 +4,8 @@
 
 On **push to `main` or `master`**, the workflow [`.github/workflows/docker-build.yml`](../.github/workflows/docker-build.yml) builds the app and pushes the image:
 
-- **GitHub Container Registry (ghcr.io):** always — `ghcr.io/<owner>/<repo>/olo-backend:latest` and `:sha-<short-sha>`
-- **Docker Hub:** only when Docker Hub secrets are set — `<DOCKERHUB_USERNAME>/olo-backend:latest` and `:sha-<short-sha>`
+- **GitHub Container Registry (ghcr.io):** always — `ghcr.io/<owner>/<repo>/olo:latest` and `:sha-<short-sha>`
+- **Docker Hub:** only when Docker Hub secrets are set — `<DOCKERHUB_USERNAME>/olo:latest` and `:sha-<short-sha>`
 
 ### Credentials
 
@@ -29,22 +29,24 @@ You can also trigger the workflow manually: **Actions → Build and push Docker 
 Build locally:
 
 ```bash
-docker build -t olo-backend:local .
-docker run -p 7080:7080 olo-backend:local
+docker build -t olo:local .
+docker run -p 7080:7080 olo:local
 ```
 
 Pull and run from a registry (after the workflow has run at least once):
 
 **GitHub Container Registry:**
 ```bash
-docker pull ghcr.io/<owner>/<repo>/olo-backend:latest
-docker run -p 7080:7080 ghcr.io/<owner>/<repo>/olo-backend:latest
+docker pull ghcr.io/<owner>/<repo>/olo:latest
+docker run -p 7080:7080 ghcr.io/<owner>/<repo>/olo:latest
 ```
 
 **Docker Hub** (when you’ve set `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`):
 ```bash
-docker pull <your-dockerhub-username>/olo-backend:latest
-docker run -p 7080:7080 <your-dockerhub-username>/olo-backend:latest
+docker pull <your-dockerhub-username>/olo:latest
+docker run -p 7080:7080 <your-dockerhub-username>/olo:latest
 ```
 
-The app listens on **port 7080**. For Temporal and callbacks you may need `-e olo.temporal.target=host.docker.internal:7233` and `-e olo.chat.callback-base-url=http://host.docker.internal:7080` (or your host URL) when running in Docker.
+The app listens on **port 7080**. For Temporal and callbacks you may need `-e OLO_TEMPORAL_TARGET=host.docker.internal:7233` and `-e OLO_CHAT_CALLBACK_BASE_URL=http://host.docker.internal:7080` (or your host URL) when running in Docker.
+
+Image name is **olo** (e.g. `openllmorchestrator/olo` on Docker Hub). For **docker-compose** (dev, demo, production), see [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md).
