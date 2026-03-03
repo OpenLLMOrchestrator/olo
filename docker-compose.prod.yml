@@ -24,6 +24,7 @@ services:
       OLO_CHAT_CALLBACK_BASE_URL: ${OLO_CHAT_CALLBACK_BASE_URL:-http://localhost:7080}
       OLO_WS_JWT_REQUIRED: ${OLO_WS_JWT_REQUIRED:-true}
       OLO_DEFAULT_TENANT_ID: ${OLO_DEFAULT_TENANT_ID:-2a2a91fb-f5b4-4cf0-b917-524d242b2e3d}
+      OLO_SWAGGER_UI_ENABLED: ${OLO_SWAGGER_UI_ENABLED:-false}
     restart: unless-stopped
     # Optional: add a healthcheck if your image has wget/curl (e.g. custom Dockerfile)
     # healthcheck:

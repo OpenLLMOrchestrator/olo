@@ -50,6 +50,7 @@ docker run -p 7080:7080 \
 | `OLO_CHAT_CALLBACK_BASE_URL` | Base URL for worker callbacks | `http://localhost:7080` |
 | `OLO_WS_JWT_REQUIRED` | Require JWT for WebSocket | `false` (set `true` in production) |
 | `OLO_DEFAULT_TENANT_ID` | Default tenant (WebSocket + UI) | `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d` |
+| `OLO_SWAGGER_UI_ENABLED` | Enable Swagger UI at /swagger-ui.html | `true` (set `false` in production to hide docs) |
 
 ### Docker Compose
 
@@ -77,8 +78,6 @@ services:
 
 ### Docs and source
 
-- **Source:** [GitHub repository URL]
-- **API / Swagger:** Run the container and open http://localhost:7080/swagger-ui.html  
-- **License:** [Your license]
-
-Replace `YOUR_DOCKERHUB_USERNAME` and the GitHub/license links with your values before pasting.
+- **Source:** [https://github.com/OpenLLMOrchestrator/olo](https://github.com/OpenLLMOrchestrator/olo)
+- **API / Swagger:** Run the container and open http://localhost:7080/swagger-ui.html (when `OLO_SWAGGER_UI_ENABLED=true`)
+- **License:** Apache License 2.0 — see [LICENSE](https://github.com/OpenLLMOrchestrator/olo/blob/main/LICENSE)

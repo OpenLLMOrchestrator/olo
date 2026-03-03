@@ -47,6 +47,6 @@ docker pull <your-dockerhub-username>/olo:latest
 docker run -p 7080:7080 <your-dockerhub-username>/olo:latest
 ```
 
-The app listens on **port 7080**. For Temporal and callbacks you may need `-e OLO_TEMPORAL_TARGET=host.docker.internal:7233` and `-e OLO_CHAT_CALLBACK_BASE_URL=http://host.docker.internal:7080` (or your host URL) when running in Docker.
+The app listens on **port 7080**. When running the image alone, set env as needed (e.g. `-e OLO_TEMPORAL_TARGET=host.docker.internal:7233`, `-e OLO_CHAT_CALLBACK_BASE_URL=...`, `-e OLO_CACHE_HOST=...`). Swagger UI is enabled by default; set **`OLO_SWAGGER_UI_ENABLED=false`** to disable in production. See [.env.example](../.env.example) for all variables.
 
-Image name is **olo** (e.g. `openllmorchestrator/olo` on Docker Hub). For **docker-compose** (dev, demo, production), see [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md).
+**Image name:** **olo** (e.g. `openllmorchestrator/olo` on Docker Hub). For **docker-compose** (dev, demo, production), see [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md).

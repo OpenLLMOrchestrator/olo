@@ -10,9 +10,10 @@ For a single reference of **example request/response payloads for all APIs**, se
 
 ## 1. Open Swagger UI
 
-1. Start the backend (e.g. `start.bat` or `./gradlew bootRun`).
-2. In your browser go to: **http://localhost:7080/swagger-ui.html**
-3. You’ll see the API grouped by **Tenants**, **Tenant queues**, **Sessions**, and **Runs**. Use **GET /api/tenants** to get the default tenant id for session/message requests.
+1. Start the backend (e.g. `./gradlew bootRun` or Docker Compose — see [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md)).
+2. Ensure **Swagger UI is enabled** (default: **`OLO_SWAGGER_UI_ENABLED=true`**). If disabled (e.g. in production), set it to `true` for testing.
+3. In your browser go to: **http://localhost:7080/swagger-ui.html**
+4. You’ll see the API grouped by **Tenants**, **Tenant queues**, **Sessions**, and **Runs**. Use **GET /api/tenants** to get the default tenant id for session/message requests.
 
 ---
 
@@ -187,6 +188,8 @@ Or with a message:
 
 ## Related docs
 
+- **[.env.example](../.env.example)** — All env vars (Swagger, cache, Temporal, tenant). Copy to `.env` to override.
+- **[DOCKER_COMPOSE.md](DOCKER_COMPOSE.md)** — Run backend + Redis + Temporal with Docker; Swagger URL and env vars.
 - **[SDK_AND_BACKEND.md](SDK_AND_BACKEND.md)** — How the backend uses the SDK, WorkflowInput, task queue, and config.
 - **[WORKFLOW_INPUT.md](WORKFLOW_INPUT.md)** — Workflow payload format (version 1.0), WorkflowInputBuilder, inputs, context, routing.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — System overview and package layout (backend: domain, api.request/response, service.impl, workflow.impl; executor: workflow, activities, impl packages).

@@ -41,7 +41,7 @@ First run builds `olo:local` from the Dockerfile. Later runs reuse the image unl
 ### URLs
 
 - **Backend API:** http://localhost:7080  
-- **Swagger UI:** http://localhost:7080/swagger-ui.html  
+- **Swagger UI:** http://localhost:7080/swagger-ui.html (enabled when **`OLO_SWAGGER_UI_ENABLED=true`**, default in dev/demo)  
 - **Health:** http://localhost:7080/api/health  
 - **Redis:** localhost:6379 (for CLI or other tools)  
 - **Temporal:** localhost:7233 (for tctl or worker)
@@ -148,9 +148,13 @@ OLO_CHAT_CALLBACK_BASE_URL=https://api.example.com OLO_TEMPORAL_TARGET=temporal:
   docker compose -f docker-compose.prod.yml up -d
 ```
 
+### Swagger UI
+
+Production compose defaults to **`OLO_SWAGGER_UI_ENABLED=false`** so `/swagger-ui.html` and `/api-docs` are disabled. Set `OLO_SWAGGER_UI_ENABLED=true` in `.env` only if you need to expose docs in that environment.
+
 ### Healthcheck
 
-The prod file includes a healthcheck that hits `http://localhost:7080/api/health`. Adjust the image if your health endpoint differs (e.g. different port or path).
+The prod file includes an optional healthcheck (commented out) that would hit `http://localhost:7080/api/health`. Uncomment and adjust if your image provides wget/curl.
 
 ### Stop
 

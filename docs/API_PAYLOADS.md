@@ -18,7 +18,7 @@ No request body. Used by the UI to populate the tenant dropdown.
 ]
 ```
 
-Default tenant id comes from `olo.default-tenant-id` (e.g. `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`). Additional tenant ids can come from `olo.tenant-ids` (config) and from Redis keys matching `*:olo:kernel:config:*`.
+Default tenant id comes from **`OLO_DEFAULT_TENANT_ID`** / `olo.default-tenant-id` (e.g. `2a2a91fb-f5b4-4cf0-b917-524d242b2e3d`). Additional tenant ids from **`OLO_TENANT_IDS`** and from Redis keys matching `*:olo:kernel:config:*` (Redis via **`OLO_CACHE_HOST`** / **`OLO_CACHE_PORT`**). See [.env.example](../.env.example) for all env vars.
 
 ---
 

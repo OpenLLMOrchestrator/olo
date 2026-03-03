@@ -54,12 +54,14 @@ docker run -d -p 7233:7233 temporalio/auto-setup
 
 Backend will be at **http://localhost:7080**.
 
-- **Task queue**: Comes from the frontend (request body `taskQueue`). If omitted, backend uses `olo.temporal.task-queue` (default `olo-chat`). Executor must use the same task queue (e.g. env `OLO_TASK_QUEUE`).
+- **Task queue**: Comes from the frontend (request body `taskQueue`). If omitted, backend uses `OLO_TEMPORAL_TASK_QUEUE` (default `olo-chat`). Executor must use the same task queue.
 - **Workflow type**: Default is **`OloKernelWorkflow`**. Override with env **`OLO_WORKFLOW_TYPE`**. The worker must register the workflow under the same type name.
-- **Swagger UI** (all chat APIs, including tenants and queues): **http://localhost:7080/swagger-ui.html**
+- **Swagger UI**: **http://localhost:7080/swagger-ui.html** (all chat APIs). Disable in production with **`OLO_SWAGGER_UI_ENABLED=false`** (see [.env.example](../.env.example)).
 - **OpenAPI JSON**: http://localhost:7080/v3/api-docs
-- **Tenants / queues**: GET /api/tenants returns the default tenant (and optionally Redis-discovered tenants). GET /api/tenants/{tenantId}/queues and GET .../queues/{queueName}/config require Redis (keys `<tenantId>:olo:kernel:config:*`). If Redis is not configured, those endpoints return [] or {}; no 500.
+- **Tenants / queues**: GET /api/tenants returns the default tenant (`OLO_DEFAULT_TENANT_ID`) and optionally Redis-discovered tenants. GET /api/tenants/{tenantId}/queues requires Redis (`OLO_CACHE_HOST` / `OLO_CACHE_PORT`). If Redis is not configured, those endpoints return [] or {}; no 500.
 - All requests to `/api/*` are logged (method, URI, and body for POST/PUT/PATCH).
+
+**Configuration:** Key env vars (or [.env.example](../.env.example)): `OLO_CACHE_HOST`, `OLO_CACHE_PORT`, `OLO_TEMPORAL_TARGET`, `OLO_CHAT_CALLBACK_BASE_URL`, `OLO_DEFAULT_TENANT_ID`, `OLO_SWAGGER_UI_ENABLED`. For Docker Compose (backend + Redis + Temporal in one stack), see [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md).
 
 ---
 

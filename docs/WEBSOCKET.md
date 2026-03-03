@@ -294,5 +294,7 @@ The WebSocket layer does **not** interpret execution, simulate workflow, or add 
 
 ## Related
 
+- [.env.example](../.env.example) — Env vars (default tenant, JWT, cache). Copy to `.env` to override.
 - [API_PAYLOADS.md](API_PAYLOADS.md) — Example payloads (including WebSocket subscribe).
+- [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md) — Run backend + Redis + Temporal with Docker.
 - [TESTING_WITH_SWAGGER.md](TESTING_WITH_SWAGGER.md) — How to run the backend and test flows.
